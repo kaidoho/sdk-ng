@@ -1,0 +1,1238 @@
+From b30d68d37890c8669c9647bf685af71e9f1a94e1 Mon Sep 17 00:00:00 2001
+From: Markus Moessner <Markus.Moessner@sick.de>
+Date: Thu, 9 Jan 2020 13:44:42 +0100
+Subject: [PATCH 1/2] base
+
+---
+ config/cc/gcc.in             |  12 ++-
+ config/global/paths.in       |   8 ++
+ config/libc/newlib.in        | 222 ++++++++++++++++++++++++++++++++++++++++++-
+ ct-ng.in                     |   1 +
+ scripts/build/cc/gcc.sh      | 133 +++++++++++++++++++++++---
+ scripts/build/internals.sh   |  27 ++++++
+ scripts/build/libc/newlib.sh | 157 ++++++++++++++++++++++++++----
+ 7 files changed, 529 insertions(+), 31 deletions(-)
+
+diff --git a/config/cc/gcc.in b/config/cc/gcc.in
+index 849b1ad..be7d055 100644
+--- a/config/cc/gcc.in
++++ b/config/cc/gcc.in
+@@ -184,12 +184,22 @@ comment "Settings for libraries running on target"
+ config CC_GCC_ENABLE_TARGET_OPTSPACE
+     bool
+     prompt "Optimize gcc libs for size"
+-    default y
+     help
+       Pass --enable-target-optspace to crossgcc's configure.
+       
+       This will compile crossgcc's libs with -Os.
+ 
++config CC_GCC_LIBSTDCXX_NANO
++    bool
++    prompt "Compile libstdc++ nano variant"
++    help
++      Builds the additional nano variant of libstdc++ that is linked when
++      "--specs=nano.specs" is specified. This option compiles an additional
++      target libstdc++ using "-Os" (optimise for size) option flag.
++
++      Note that if "CC_GCC_ENABLE_TARGET_OPTSPACE" is enabled, the default and
++      nano versions will be identical.
++
+ config CC_GCC_LIBMUDFLAP
+     bool
+     prompt "Compile libmudflap"
+diff --git a/config/global/paths.in b/config/global/paths.in
+index 0bf43d9..9517d1c 100644
+--- a/config/global/paths.in
++++ b/config/global/paths.in
+@@ -133,3 +133,11 @@ config STRIP_TARGET_TOOLCHAIN_EXECUTABLES
+       An install-strip make target is provided that installs stripped
+       executables, and may install libraries with unneeded or debugging
+       sections stripped. 
++
++config STRIP_TARGET_TOOLCHAIN_LIBRARIES
++    bool
++    prompt "Strip target toolchain libraries"
++    default y
++    help
++      Ensures that the target toolchain libraries are stripped of any unneeded
++      or debugging information.
+diff --git a/config/libc/newlib.in b/config/libc/newlib.in
+index 268f956..d84db70 100644
+--- a/config/libc/newlib.in
++++ b/config/libc/newlib.in
+@@ -152,6 +152,13 @@ config LIBC_NEWLIB_MULTITHREAD
+     help
+         Enable support for multiple threads.
+ 
++config LIBC_NEWLIB_RETARGETABLE_LOCKING
++    bool
++    prompt "Enable retargetable locking"
++    help
++        Enable retargetable locking to allow the operating system to override
++        the dummy lock functions defined within the newlib.
++
+ config LIBC_NEWLIB_EXTRA_SECTIONS
+     bool
+     prompt "Place each function & data element in their own section"
+@@ -172,7 +179,6 @@ config LIBC_NEWLIB_WIDE_ORIENT
+ config LIBC_NEWLIB_ENABLE_TARGET_OPTSPACE
+     bool
+     prompt "Optimize newlib for size"
+-    default y
+     help
+       Pass --enable-target-optspace to newlib configure.
+ 
+@@ -215,3 +221,217 @@ config LIBC_NEWLIB_EXTRA_CONFIG_ARRAY
+     default ""
+     help
+       Extra flags to pass onto ./configure when configuring the newlib.
++
++# newlib nano variant options
++comment "Options for newlib nano"
++
++config LIBC_NANO_NEWLIB
++    bool
++    prompt "Enable newlib nano variant"
++    help
++      Enables the additional `nano' variant of newlib to be built.  The build
++      options for this variant can be configured separately to produce the
++      smallest library size.  The nano variant can be used by specifying
++      `--specs=nano.specs' during linking.
++
++if LIBC_NANO_NEWLIB
++
++config LIBC_NANO_NEWLIB_TARGET_CFLAGS
++    string
++    prompt "Target CFLAGS for newlib nano"
++    default ""
++    help
++      Used to add specific options when compiling the target libraries
++      (eg. -ffunction-sections -fdata-sections), which can't be defined
++      in global TARGET_CFLAGS, because they shall be not used for the
++      gcc target libraries.
++      Note:  Both TARGET_CFLAGS and LIBC_NANO_NEWLIB_TARGET_CFLAGS are used
++             to compile the libraries.
++
++      Leave blank if you don't know better.
++
++config LIBC_NANO_NEWLIB_IO_C99FMT
++    bool
++    prompt "Enable IOs on C99 formats"
++    help
++      Enable support for IOs on C99 formats.
++
++config LIBC_NANO_NEWLIB_IO_LL
++    bool
++    prompt "Enable IOs on long long"
++    help
++      Enable support for IOs on long long integers.
++
++config LIBC_NANO_NEWLIB_IO_FLOAT
++    bool
++    prompt "Enable IOs on floats and doubles"
++    help
++      Enable support for IOs on floating point
++      values (float and double).
++
++config LIBC_NANO_NEWLIB_IO_LDBL
++    bool
++    prompt "Enable IOs on long doubles"
++    depends on LIBC_NANO_NEWLIB_IO_FLOAT
++    help
++      Enable support for IOs on long doubles.
++
++config LIBC_NANO_NEWLIB_IO_POS_ARGS
++    bool
++    prompt "Enable printf-family positional arg support"
++    help
++        Enable printf-family positional arg support.
++
++config LIBC_NANO_NEWLIB_FVWRITE_IN_STREAMIO
++    bool
++    prompt "Vector buffer mechanism to support stream IO buffering"
++    default y
++    help
++        NEWLIB implements the vector buffer mechanism to support stream IO
++        buffering required by C standard.  This feature is possibly
++        unnecessary for embedded systems which won't change file buffering
++        with functions like `setbuf' or `setvbuf'.  The buffering mechanism
++        still acts as default for STDIN/STDOUT/STDERR even if this option
++        is specified.
++
++config LIBC_NANO_NEWLIB_UNBUF_STREAM_OPT
++    bool
++    prompt "Optimize fprintf to unbuffered unix file"
++    help
++        NEWLIB does optimization when `fprintf to write only unbuffered unix
++        file'.  It creates a temorary buffer to do the optimization that
++        increases stack consumption by about `BUFSIZ' bytes. Disabling this option
++        disables the optimization and saves size of text and stack.
++
++config LIBC_NANO_NEWLIB_FSEEK_OPTIMIZATION
++    bool
++    prompt "Fseek optimisation"
++    help
++        Disabling fseek optimisation can decrease code size.
++
++config LIBC_NANO_NEWLIB_DISABLE_SUPPLIED_SYSCALLS
++    bool
++    prompt "Disable the syscalls supplied with newlib"
++    help
++      Disable the syscalls that come with newlib. You
++      will have to implement your own _sbrk, _read,
++      _write... If you plan to port newlib to a new
++      platform/board, say Yes.
++
++config LIBC_NANO_NEWLIB_REGISTER_FINI
++    bool
++    prompt "Enable finalization function registration using atexit"
++    help
++        Enable finalization function registration using atexit.
++
++config LIBC_NANO_NEWLIB_ATEXIT_DYNAMIC_ALLOC
++    bool
++    prompt "Enable dynamic allocation of atexit entries"
++    default y
++    help
++        Enable dynamic allocation of atexit entries.
++
++config LIBC_NANO_NEWLIB_GLOBAL_ATEXIT
++    bool
++    prompt "Enable atexit data structure as global variable"
++    default y
++    help
++        Enable atexit data structure as global variable.  By doing so it is
++        move out of _reent structure, and can be garbage collected if atexit
++        is not referenced.
++
++config LIBC_NANO_NEWLIB_LITE_EXIT
++    bool
++    prompt "Enable lite exit"
++    default y
++    help
++        Enable lite exit, a size-reduced implementation of exit that doesn't
++        invoke clean-up functions such as _fini or global destructors.
++
++config LIBC_NANO_NEWLIB_REENT_SMALL
++    bool
++    prompt "Enable small reentrant struct support"
++    default y
++    help
++        Enable small reentrant struct support.
++
++config LIBC_NANO_NEWLIB_MULTITHREAD
++    bool
++    prompt "Enable support for multiple threads"
++    default y
++    help
++        Enable support for multiple threads.
++
++config LIBC_NANO_NEWLIB_RETARGETABLE_LOCKING
++    bool
++    prompt "Enable retargetable locking"
++    help
++        Enable retargetable locking to allow the operating system to override
++        the dummy lock functions defined within the newlib.
++
++config LIBC_NANO_NEWLIB_EXTRA_SECTIONS
++    bool
++    prompt "Place each function & data element in their own section"
++    help
++        Place each function & data symbol in their own section. This allows
++        the linker to garbage collect unused symbols at link time.
++
++config LIBC_NANO_NEWLIB_WIDE_ORIENT
++    bool
++    prompt "Allow wide C99 stream orientation"
++    help
++        C99 states that each stream has an orientation, wide or byte.  This
++        feature is possibly unnecessary for embedded systems which only do
++        byte input/output operations on stream. Disabling this feature can
++        decrease code size.
++
++config LIBC_NANO_NEWLIB_ENABLE_TARGET_OPTSPACE
++    bool
++    prompt "Optimize newlib for size"
++    default y
++    help
++      Pass --enable-target-optspace to newlib configure.
++
++      This will compile newlib with -Os.
++
++config LIBC_NANO_NEWLIB_LTO
++    bool
++    prompt "Enable Link Time Optimization"
++    depends on CC_GCC_USE_LTO
++    help
++      Builds the libraries with -flto to enable more aggressive link time
++      optimization. You will need to add -flto-partition=one to your
++      application's link line to keep the RETURN assembler macro together
++      with it's consumers.
++
++config LIBC_NANO_NEWLIB_NANO_MALLOC
++    bool
++    prompt "Enable Nano Malloc"
++    default y
++    depends on NEWLIB_HAS_NANO_MALLOC
++    help
++      NEWLIB has two implementations of malloc family's functions, one in
++      `mallocr.c' and the other one in `nano-mallocr.c'.  This options
++      enables the nano-malloc implementation, which is for small systems
++      with very limited memory.  Note that this implementation does not
++      support `--enable-malloc-debugging' any more.
++
++config LIBC_NANO_NEWLIB_NANO_FORMATTED_IO
++    bool
++    prompt "Enable Nano Formatted I/O"
++    default y
++    depends on NEWLIB_HAS_NANO_FORMATTED_IO
++    help
++      This builds NEWLIB with a special implementation of formatted I/O
++      functions, designed to lower the size of application on small systems
++      with size constraint issues.  This option does not affect wide-char
++      formatted I/O functions.
++
++config LIBC_NANO_NEWLIB_EXTRA_CONFIG_ARRAY
++    string
++    prompt "Extra config for newlib"
++    default ""
++    help
++      Extra flags to pass onto ./configure when configuring the newlib.
++
++endif # LIBC_NANO_NEWLIB
+diff --git a/ct-ng.in b/ct-ng.in
+index 2fad224..9677f10 100644
+--- a/ct-ng.in
++++ b/ct-ng.in
+@@ -282,6 +282,7 @@ CT_STEPS := \
+             libc_main                  \
+             cc_for_build               \
+             cc_for_host                \
++            cc_libstdcxx_nano          \
+             libc_post_cc               \
+             companion_libs_for_target  \
+             binutils_for_target        \
+diff --git a/scripts/build/cc/gcc.sh b/scripts/build/cc/gcc.sh
+index 60f259d..642fada 100644
+--- a/scripts/build/cc/gcc.sh
++++ b/scripts/build/cc/gcc.sh
+@@ -279,8 +279,8 @@ do_cc_core_pass_2() {
+ #   build_manuals       : whether to build manuals or not           : bool      : no
+ #   cflags              : cflags to use                             : string    : (empty)
+ #   ldflags             : ldflags to use                            : string    : (empty)
+-#   build_step          : build step 'core1', 'core2', 'gcc_build'
+-#                         or 'gcc_host'                             : string    : (none)
++#   build_step          : build step 'core1', 'core2', 'gcc_build',
++#                         'libstdcxx_nano' or 'gcc_host'            : string    : (none)
+ # Usage: do_gcc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
+ do_gcc_core_backend() {
+     local mode
+@@ -327,8 +327,16 @@ do_gcc_core_backend() {
+             # to inhibit the libiberty and libgcc tricks later on
+             build_libgcc=no
+             ;;
++        libstdcxx_nano)
++            CT_DoLog EXTRA "Configuring libstdc++ nano"
++            extra_config+=( "${CT_CC_SYSROOT_ARG[@]}" )
++            extra_user_config=( "${CT_CC_GCC_EXTRA_CONFIG_ARRAY[@]}" )
++            log_txt="libstdc++ nano library"
++            # to inhibit the libiberty and libgcc tricks later on
++            build_libgcc=no
++            ;;
+         *)
+-            CT_Abort "Internal Error: 'build_step' must be one of: 'core1', 'core2', 'gcc_build' or 'gcc_host', not '${build_step:-(empty)}'"
++            CT_Abort "Internal Error: 'build_step' must be one of: 'core1', 'core2', 'gcc_build', 'gcc_host' or 'libstdcxx_nano', not '${build_step:-(empty)}'"
+             ;;
+     esac
+ 
+@@ -447,7 +455,8 @@ do_gcc_core_backend() {
+         extra_config+=("--with-host-libstdcxx=${host_libstdcxx_flags[*]}")
+     fi
+ 
+-    if [ "${CT_CC_GCC_ENABLE_TARGET_OPTSPACE}" = "y" ]; then
++    if [ "${CT_CC_GCC_ENABLE_TARGET_OPTSPACE}" = "y" ] || \
++       [ "${build_step}" = "libstdcxx_nano" ]; then
+         extra_config+=("--enable-target-optspace")
+     fi
+     if [ "${CT_CC_GCC_DISABLE_PCH}" = "y" ]; then
+@@ -574,6 +583,9 @@ do_gcc_core_backend() {
+         cflags_for_target="${cflags_for_target} -idirafter ${CT_HEADERS_DIR}"
+     fi
+ 
++    # Assume '-O2' by default for building target libraries.
++    cflags_for_target="-g -O2 ${cflags_for_target}"
++
+     # Use --with-local-prefix so older gccs don't look in /usr/local (http://gcc.gnu.org/PR10532).
+     # Pass only user-specified CFLAGS/LDFLAGS in CFLAGS_FOR_TARGET/LDFLAGS_FOR_TARGET: during
+     # the build of, for example, libatomic, GCC tried to compile multiple variants for runtime
+@@ -871,6 +883,74 @@ do_cc_for_host() {
+ }
+ 
+ #------------------------------------------------------------------------------
++# Build an additional target libstdc++ with "-Os" (optimise for speed) option
++# flag for libstdc++ "nano" variant.
++do_cc_libstdcxx_nano()
++{
++    local -a final_opts
++    local final_backend
++
++    if [ "${CT_CC_GCC_LIBSTDCXX_NANO}" = "y" ]; then
++        final_opts+=( "host=${CT_HOST}" )
++        final_opts+=( "prefix=${CT_BUILD_DIR}/build-cc-libstdcxx-nano/target-libs" )
++        final_opts+=( "complibs=${CT_HOST_COMPLIBS_DIR}" )
++        final_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
++        final_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
++        final_opts+=( "lang_list=$( cc_gcc_lang_list )" )
++        final_opts+=( "build_step=libstdcxx_nano" )
++
++        if [ "${CT_BARE_METAL}" = "y" ]; then
++            final_opts+=( "mode=baremetal" )
++            final_opts+=( "build_libgcc=yes" )
++            final_opts+=( "build_libstdcxx=yes" )
++            final_opts+=( "build_libgfortran=yes" )
++            if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
++                final_opts+=( "build_staticlinked=yes" )
++            fi
++            final_backend=do_gcc_core_backend
++        else
++            final_backend=do_gcc_backend
++        fi
++
++        CT_DoStep INFO "Installing libstdc++ nano"
++        CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-libstdcxx-nano"
++        "${final_backend}" "${final_opts[@]}"
++        CT_Popd
++
++        # GCC installs stuff (including libgcc) into its own /lib dir,
++        # outside of sysroot, breaking linking with -static-libgcc.
++        # Fix up by moving the libraries into the sysroot.
++        if [ "${CT_USE_SYSROOT}" = "y" ]; then
++            CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-gcc-final-movelibs"
++            CT_IterateMultilibs gcc_movelibs movelibs
++            CT_Popd
++        fi
++
++        # Copy lib{std,sup}c++ as nano libraries
++        CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-libstdcxx-nano-copy"
++        CT_IterateMultilibs libstdcxx_nano_copy_multilibs copylibs
++        CT_Popd
++
++        CT_EndStep
++    fi
++}
++
++libstdcxx_nano_copy_multilibs()
++{
++    local nano_lib_dir="${CT_BUILD_DIR}/build-cc-libstdcxx-nano/target-libs"
++    local multi_flags multi_dir multi_os_dir multi_os_dir_gcc multi_root multi_index multi_count
++
++    for arg in "$@"; do
++        eval "${arg// /\\ }"
++    done
++
++    CT_DoExecLog ALL cp -f "${nano_lib_dir}/${CT_TARGET}/lib/${multi_dir}/libstdc++.a" \
++                           "${CT_PREFIX_DIR}/${CT_TARGET}/lib/${multi_dir}/libstdc++_nano.a"
++    CT_DoExecLog ALL cp -f "${nano_lib_dir}/${CT_TARGET}/lib/${multi_dir}/libsupc++.a" \
++                           "${CT_PREFIX_DIR}/${CT_TARGET}/lib/${multi_dir}/libsupc++_nano.a"
++}
++
++#------------------------------------------------------------------------------
+ # Build the final gcc
+ # Usage: do_gcc_backend param=value [...]
+ #   Parameter     : Definition                          : Type      : Default
+@@ -881,6 +961,8 @@ do_cc_for_host() {
+ #   ldflags       : ldflags to use                      : string    : (empty)
+ #   lang_list     : the list of languages to build      : string    : (empty)
+ #   build_manuals : whether to build manuals or not     : bool      : no
++#   build_step    : build step 'gcc_build', 'gcc_host',
++#                   or 'libstdcxx_nano'                 : string    : (none)
+ do_gcc_backend() {
+     local host
+     local prefix
+@@ -888,8 +970,11 @@ do_gcc_backend() {
+     local lang_list
+     local cflags
+     local cflags_for_build
++    local cflags_for_target
+     local ldflags
+     local build_manuals
++    local build_step
++    local log_txt
+     local -a host_libstdcxx_flags
+     local -a extra_config
+     local -a final_LDFLAGS
+@@ -900,7 +985,20 @@ do_gcc_backend() {
+         eval "${arg// /\\ }"
+     done
+ 
+-    CT_DoLog EXTRA "Configuring final gcc compiler"
++    # This function gets called for both final gcc and libstdcxx_nano.
++    case "${build_step}" in
++        gcc_build|gcc_host)
++            log_txt="final gcc compiler"
++            ;;
++        libstdcxx_nano)
++            log_txt="libstdc++ nano library"
++            ;;
++        *)
++            CT_Abort "Internal Error: 'build_step' must be one of: 'gcc_build', 'gcc_host' or 'libstdcxx_nano', not '${build_step:-(empty)}'"
++            ;;
++    esac
++
++    CT_DoLog EXTRA "Configuring ${log_txt}"
+ 
+     # Enable selected languages
+     extra_config+=("--enable-languages=${lang_list}")
+@@ -1043,13 +1141,20 @@ do_gcc_backend() {
+         fi
+     fi
+ 
+-    if [ "${CT_CC_GCC_ENABLE_TARGET_OPTSPACE}" = "y" ]; then
++    if [ "${CT_CC_GCC_ENABLE_TARGET_OPTSPACE}" = "y" ] || \
++       [ "${build_step}" = "libstdcxx_nano" ]; then
+         extra_config+=("--enable-target-optspace")
+     fi
+     if [ "${CT_CC_GCC_DISABLE_PCH}" = "y" ]; then
+         extra_config+=("--disable-libstdcxx-pch")
+     fi
+ 
++    if [ "${build_step}" = "libstdcxx_nano" ]; then
++        extra_config+=("-ffunction-sections")
++        extra_config+=("-fdata-sections")
++        extra_config+=("-fno-exceptions")
++    fi
++
+     case "${CT_CC_GCC_LDBL_128}" in
+         y)  extra_config+=("--with-long-double-128");;
+         m)  ;;
+@@ -1126,8 +1231,9 @@ do_gcc_backend() {
+ 
+     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
+ 
+-    # We may need to modify host/build CFLAGS separately below
++    # We may need to modify host/build/target CFLAGS separately below
+     cflags_for_build="${cflags}"
++    cflags_for_target="${CT_TARGET_CFLAGS}"
+ 
+     # Clang's default bracket-depth is 256, and building GCC
+     # requires somewhere between 257 and 512.
+@@ -1143,6 +1249,9 @@ do_gcc_backend() {
+         fi
+     fi
+ 
++    # Assume '-O2' by default for building target libraries.
++    cflags_for_target="-g -O2 ${cflags_for_target}"
++
+     # NB: not using CT_ALL_TARGET_CFLAGS/CT_ALL_TARGET_LDFLAGS here!
+     # See do_gcc_core_backend for explanation.
+     CT_DoExecLog CFG                                   \
+@@ -1152,8 +1261,8 @@ do_gcc_backend() {
+     CXXFLAGS="${cflags}"                               \
+     CXXFLAGS_FOR_BUILD="${cflags_for_build}"           \
+     LDFLAGS="${final_LDFLAGS[*]}"                      \
+-    CFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"            \
+-    CXXFLAGS_FOR_TARGET="${CT_TARGET_CFLAGS}"          \
++    CFLAGS_FOR_TARGET="${cflags_for_target}"           \
++    CXXFLAGS_FOR_TARGET="${cflags_for_target}"         \
+     LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"          \
+     ${CONFIG_SHELL}                                    \
+     "${CT_SRC_DIR}/gcc/configure"                      \
+@@ -1172,11 +1281,11 @@ do_gcc_backend() {
+         CT_DoExecLog ALL make ${CT_JOBSFLAGS} all-build-libiberty
+     fi
+ 
+-    CT_DoLog EXTRA "Building final gcc compiler"
++    CT_DoLog EXTRA "Building ${log_txt}"
+     CT_DoExecLog ALL make ${CT_JOBSFLAGS} all
+ 
+     # See the note on issues with parallel 'make install' in GCC above.
+-    CT_DoLog EXTRA "Installing final gcc compiler"
++    CT_DoLog EXTRA "Installing ${log_txt}"
+     if [ "${CT_STRIP_TARGET_TOOLCHAIN_EXECUTABLES}" = "y" ]; then
+         CT_DoExecLog ALL make install-strip
+     else
+@@ -1187,7 +1296,7 @@ do_gcc_backend() {
+     # tree makes the libtoolized utilities that are built next assume
+     # that, for example, libsupc++ is an "accessory library", and not include
+     # -lsupc++ to the link flags. That breaks ltrace, for example.
+-    CT_DoLog EXTRA "Housekeeping for final gcc compiler"
++    CT_DoLog EXTRA "Housekeeping for ${log_txt}"
+     CT_Pushd "${prefix}"
+     find . -type f -name "*.la" -exec rm {} \; |CT_DoLog ALL
+     CT_Popd
+diff --git a/scripts/build/internals.sh b/scripts/build/internals.sh
+index 821761c..ed9e2b1 100644
+--- a/scripts/build/internals.sh
++++ b/scripts/build/internals.sh
+@@ -92,6 +92,19 @@ do_finish() {
+         CT_Popd
+     fi
+ 
++    # Strip target toolchain libraries
++    if [ "${CT_STRIP_TARGET_TOOLCHAIN_LIBRARIES}" = "y" ]; then
++        CT_DoLog INFO "Stripping all target toolchain libraries"
++        CT_Pushd "${CT_PREFIX_DIR}"
++
++        strip_target_lib "${CT_PREFIX_DIR}/${CT_TARGET}/lib" "*.a"
++        strip_target_lib "${CT_PREFIX_DIR}/${CT_TARGET}/lib" "*.o"
++        strip_target_lib "${CT_PREFIX_DIR}/lib/gcc/${CT_TARGET}/${gcc_version}" "*.a"
++        strip_target_lib "${CT_PREFIX_DIR}/lib/gcc/${CT_TARGET}/${gcc_version}" "*.o"
++
++        CT_Popd
++    fi
++
+     if [ "${CT_BARE_METAL}" != "y" ]; then
+         CT_DoLog EXTRA "Installing the populate helper"
+         sed -r -e 's|@@CT_TARGET@@|'"${CT_TARGET}"'|g;' \
+@@ -140,3 +153,17 @@ do_finish() {
+ 
+     CT_EndStep
+ }
++
++strip_target_lib()
++{
++    local strip_args
++
++    strip_args="-R .comment -R .note -R .debug_info -R .debug_aranges
++    -R .debug_pubnames -R .debug_pubtypes -R .debug_abbrev -R .debug_line
++    -R .debug_str -R .debug_ranges -R .debug_loc
++        "
++
++    find "$1" -name "$2" | while read target_lib; do
++        CT_DoExecLog ALL ${CT_TARGET}-objcopy ${strip_args} "${target_lib}"
++    done
++}
+diff --git a/scripts/build/libc/newlib.sh b/scripts/build/libc/newlib.sh
+index 95ab791..299698a 100644
+--- a/scripts/build/libc/newlib.sh
++++ b/scripts/build/libc/newlib.sh
+@@ -18,7 +18,7 @@ newlib_start_files()
+     CT_EndStep
+ }
+ 
+-newlib_main()
++newlib_main_full()
+ {
+     local -a newlib_opts
+     local cflags_for_target
+@@ -52,22 +52,6 @@ newlib_main()
+         newlib_opts+=( "--enable-newlib-supplied-syscalls" )
+     fi
+ 
+-    yn_args="IO_POS_ARGS:newlib-io-pos-args
+-IO_C99FMT:newlib-io-c99-formats
+-IO_LL:newlib-io-long-long
+-NEWLIB_REGISTER_FINI:newlib-register-fini
+-NANO_MALLOC:newlib-nano-malloc
+-NANO_FORMATTED_IO:newlib-nano-formatted-io
+-ATEXIT_DYNAMIC_ALLOC:newlib-atexit-dynamic-alloc
+-GLOBAL_ATEXIT:newlib-global-atexit
+-LITE_EXIT:lite-exit
+-REENT_SMALL:newlib-reent-small
+-MULTITHREAD:newlib-multithread
+-WIDE_ORIENT:newlib-wide-orient
+-UNBUF_STREAM_OPT:newlib-unbuf-stream-opt
+-ENABLE_TARGET_OPTSPACE:target-optspace
+-    "
+-
+     for ynarg in $yn_args; do
+         var="CT_LIBC_NEWLIB_${ynarg%:*}"
+         eval var=\$${var}
+@@ -131,3 +115,142 @@ ENABLE_TARGET_OPTSPACE:target-optspace
+     CT_Popd
+     CT_EndStep
+ }
++
++newlib_main_nano()
++{
++    local -a newlib_opts
++    local cflags_for_target
++
++    CT_DoStep INFO "Installing C library (nano)"
++
++    CT_mkdir_pushd "${CT_BUILD_DIR}/build-libc-nano"
++
++    CT_DoLog EXTRA "Configuring C library (nano)"
++
++    # Multilib is the default, so if it is not enabled, disable it.
++    if [ "${CT_MULTILIB}" != "y" ]; then
++        newlib_opts+=("--disable-multilib")
++    fi
++
++    if [ "${CT_LIBC_NANO_NEWLIB_IO_FLOAT}" = "y" ]; then
++        newlib_opts+=( "--enable-newlib-io-float" )
++        if [ "${CT_LIBC_NANO_NEWLIB_IO_LDBL}" = "y" ]; then
++            newlib_opts+=( "--enable-newlib-io-long-double" )
++        else
++            newlib_opts+=( "--disable-newlib-io-long-double" )
++        fi
++    else
++        newlib_opts+=( "--disable-newlib-io-float" )
++        newlib_opts+=( "--disable-newlib-io-long-double" )
++    fi
++
++    if [ "${CT_LIBC_NANO_NEWLIB_DISABLE_SUPPLIED_SYSCALLS}" = "y" ]; then
++        newlib_opts+=( "--disable-newlib-supplied-syscalls" )
++    else
++        newlib_opts+=( "--enable-newlib-supplied-syscalls" )
++    fi
++
++    for ynarg in $yn_args; do
++        var="CT_LIBC_NANO_NEWLIB_${ynarg%:*}"
++        eval var=\$${var}
++        argument=${ynarg#*:}
++
++
++        if [ "${var}" = "y" ]; then
++            newlib_opts+=( "--enable-$argument" )
++        else
++            newlib_opts+=( "--disable-$argument" )
++        fi
++    done
++
++    [ "${CT_LIBC_NANO_NEWLIB_EXTRA_SECTIONS}" = "y" ] && \
++        CT_LIBC_NANO_NEWLIB_TARGET_CFLAGS="${CT_LIBC_NANO_NEWLIB_TARGET_CFLAGS} -ffunction-sections -fdata-sections"
++
++    [ "${CT_LIBC_NANO_NEWLIB_LTO}" = "y" ] && \
++        CT_LIBC_NANO_NEWLIB_TARGET_CFLAGS="${CT_LIBC_NANO_NEWLIB_TARGET_CFLAGS} -flto"
++
++    cflags_for_target="${CT_ALL_TARGET_CFLAGS} ${CT_LIBC_NANO_NEWLIB_TARGET_CFLAGS}"
++
++    # Note: newlib handles the build/host/target a little bit differently
++    # than one would expect:
++    #   build  : not used
++    #   host   : the machine building newlib
++    #   target : the machine newlib runs on
++    CT_DoExecLog CFG                                               \
++    CC_FOR_BUILD="${CT_BUILD}-gcc"                                 \
++    CFLAGS_FOR_TARGET="${cflags_for_target}"                       \
++    AR_FOR_TARGET="`which ${CT_TARGET}-gcc-ar`"                    \
++    RANLIB_FOR_TARGET="`which ${CT_TARGET}-gcc-ranlib`"            \
++    ${CONFIG_SHELL}                                                \
++    "${CT_SRC_DIR}/newlib/configure"                               \
++        --host=${CT_BUILD}                                         \
++        --target=${CT_TARGET}                                      \
++        --prefix=${CT_BUILD_DIR}/build-libc-nano/target-libs       \
++        "${newlib_opts[@]}"                                        \
++        "${CT_LIBC_NANO_NEWLIB_EXTRA_CONFIG_ARRAY[@]}"
++
++    CT_DoLog EXTRA "Building C library (nano)"
++    CT_DoExecLog ALL make ${CT_JOBSFLAGS}
++
++    CT_DoLog EXTRA "Installing C library (nano)"
++    CT_DoExecLog ALL make install
++
++    CT_mkdir_pushd "${CT_BUILD_DIR}/build-libc-nano-copy"
++    CT_IterateMultilibs newlib_nano_copy_multilibs copylibs
++    CT_Popd
++
++    CT_DoExecLog ALL mkdir -p "${CT_PREFIX_DIR}/${CT_TARGET}/include/newlib-nano"
++    CT_DoExecLog ALL cp -f "${CT_BUILD_DIR}/build-libc-nano/target-libs/${CT_TARGET}/include/newlib.h" \
++                           "${CT_PREFIX_DIR}/${CT_TARGET}/include/newlib-nano/newlib.h"
++
++    CT_Popd
++    CT_EndStep
++}
++
++newlib_main()
++{
++    yn_args="IO_POS_ARGS:newlib-io-pos-args
++IO_C99FMT:newlib-io-c99-formats
++IO_LL:newlib-io-long-long
++NEWLIB_REGISTER_FINI:newlib-register-fini
++NANO_MALLOC:newlib-nano-malloc
++NANO_FORMATTED_IO:newlib-nano-formatted-io
++ATEXIT_DYNAMIC_ALLOC:newlib-atexit-dynamic-alloc
++GLOBAL_ATEXIT:newlib-global-atexit
++LITE_EXIT:lite-exit
++REENT_SMALL:newlib-reent-small
++MULTITHREAD:newlib-multithread
++RETARGETABLE_LOCKING:newlib-retargetable-locking
++WIDE_ORIENT:newlib-wide-orient
++UNBUF_STREAM_OPT:newlib-unbuf-stream-opt
++ENABLE_TARGET_OPTSPACE:target-optspace
++    "
++
++    # Build the full variant (libc.a, libg.a, ...)
++    newlib_main_full
++
++    # Build the nano variant (libc_nano.a, libg_nano.a, ...)
++    if [ "${CT_LIBC_NANO_NEWLIB}" = "y" ]; then
++        newlib_main_nano
++    fi
++}
++
++newlib_nano_copy_multilibs()
++{
++    local nano_lib_dir="${CT_BUILD_DIR}/build-libc-nano/target-libs"
++    local multi_flags multi_dir multi_os_dir multi_os_dir_gcc multi_root multi_index multi_count
++
++    for arg in "$@"; do
++        eval "${arg// /\\ }"
++    done
++
++    CT_DoExecLog ALL cp -f "${nano_lib_dir}/${CT_TARGET}/lib/${multi_dir}/libc.a" \
++                           "${CT_PREFIX_DIR}/${CT_TARGET}/lib/${multi_dir}/libc_nano.a"
++    CT_DoExecLog ALL cp -f "${nano_lib_dir}/${CT_TARGET}/lib/${multi_dir}/libg.a" \
++                           "${CT_PREFIX_DIR}/${CT_TARGET}/lib/${multi_dir}/libg_nano.a"
++
++    if [ -f ${nano_lib_dir}/${CT_TARGET}/lib/${multi_dir}/librdimon.a ]; then
++        CT_DoExecLog ALL cp -f "${nano_lib_dir}/${CT_TARGET}/lib/${multi_dir}/librdimon.a" \
++                               "${CT_PREFIX_DIR}/${CT_TARGET}/lib/${multi_dir}/librdimon_nano.a"
++    fi
++}
+-- 
+2.7.4
+
+
+From eae1b99e98a96e66e24b62539610bf5cfb7b9791 Mon Sep 17 00:00:00 2001
+From: Markus Moessner <Markus.Moessner@sick.de>
+Date: Thu, 9 Jan 2020 14:58:47 +0100
+Subject: [PATCH 2/2] Add Zephyr OS
+
+---
+ config/arch/powerpc.in         |  2 +-
+ config/binutils.in             |  2 +-
+ config/binutils/binutils.in    |  1 +
+ config/cc.in                   |  4 ++--
+ config/cc/gcc.in               |  3 ++-
+ config/debug/duma.in           |  1 +
+ config/debug/gdb.in.native     |  8 +++++---
+ config/kernel.in               |  4 ++++
+ config/kernel/zephyr.in        |  9 +++++++++
+ config/libc.in                 |  1 +
+ config/libc/bionic.in          |  2 +-
+ config/libc/glibc.in           |  2 +-
+ config/libc/moxiebox.in        |  2 +-
+ config/libc/musl.in            |  2 +-
+ config/libc/newlib.in          |  2 +-
+ config/libc/uClibc.in          |  2 +-
+ config/toolchain.in            |  3 ++-
+ scripts/build/cc/gcc.sh        | 46 +++++++++++++++++++++++++++++++++++++++---
+ scripts/build/internals.sh     |  2 +-
+ scripts/build/kernel/zephyr.sh | 24 ++++++++++++++++++++++
+ 20 files changed, 103 insertions(+), 19 deletions(-)
+ create mode 100644 config/kernel/zephyr.in
+ create mode 100644 scripts/build/kernel/zephyr.sh
+
+diff --git a/config/arch/powerpc.in b/config/arch/powerpc.in
+index 40d88b9..764d96c 100644
+--- a/config/arch/powerpc.in
++++ b/config/arch/powerpc.in
+@@ -35,7 +35,7 @@ config ARCH_powerpc_ABI_DEFAULT
+ config ARCH_powerpc_ABI_EABI
+     bool
+     prompt "EABI"
+-    depends on BARE_METAL
++    depends on BARE_METAL || ZEPHYR
+     help
+       The Embedded ABI (stack alignment of 8 bytes, etc).
+ 
+diff --git a/config/binutils.in b/config/binutils.in
+index c4762aa..7146af0 100644
+--- a/config/binutils.in
++++ b/config/binutils.in
+@@ -9,7 +9,7 @@ choice
+ config ARCH_BINFMT_ELF
+     bool
+     prompt "ELF"
+-    depends on ARCH_USE_MMU || BARE_METAL
++    depends on ARCH_USE_MMU || BARE_METAL || ZEPHYR
+     help
+       This will make your system build ELF executables,
+       suitable for architectures with an MMU.
+diff --git a/config/binutils/binutils.in b/config/binutils/binutils.in
+index 928659a..06708a0 100644
+--- a/config/binutils/binutils.in
++++ b/config/binutils/binutils.in
+@@ -171,6 +171,7 @@ config BINUTILS_FOR_TARGET
+     bool
+     prompt "binutils libraries for the target"
+     depends on ! BARE_METAL
++    depends on ! ZEPHYR
+     help
+       Some utilities may need binutils libraries to be available on
+       the target, eg. oprofile.
+diff --git a/config/cc.in b/config/cc.in
+index 187a48d..930ce65 100644
+--- a/config/cc.in
++++ b/config/cc.in
+@@ -58,7 +58,7 @@ config CC_LANG_FORTRAN
+       Only select this if you know that your specific version of the
+       compiler supports this language.
+ 
+-if ! BARE_METAL
++if ! BARE_METAL && ! ZEPHYR
+ 
+ config CC_LANG_JAVA
+     bool
+@@ -114,7 +114,7 @@ config CC_LANG_GOLANG
+       Only select this if you know that your specific version of the
+       compiler supports this language.
+ 
+-endif # ! BARE_METAL
++endif # ! BARE_METAL && ! ZEPHYR
+ 
+ config CC_LANG_OTHERS
+     string
+diff --git a/config/cc/gcc.in b/config/cc/gcc.in
+index be7d055..7ac8030 100644
+--- a/config/cc/gcc.in
++++ b/config/cc/gcc.in
+@@ -277,7 +277,7 @@ config CC_CXA_ATEXIT
+     bool
+     prompt "Use __cxa_atexit"
+     default y
+-    depends on ! BARE_METAL || LIBC_PROVIDES_CXA_ATEXIT
++    depends on (! BARE_METAL && ! ZEPHYR ) || LIBC_PROVIDES_CXA_ATEXIT
+     help
+       If you get the missing symbol "__cxa_atexit" when building C++ programs,
+       you might want to try disabling this option.
+@@ -297,6 +297,7 @@ config CC_GCC_SJLJ_EXCEPTIONS
+     tristate
+     prompt "Use sjlj for exceptions"
+     depends on ! BARE_METAL
++    depends on ! ZEPHYR
+     default m
+     help
+       'sjlj' is short for setjmp/longjmp.
+diff --git a/config/debug/duma.in b/config/debug/duma.in
+index bc69e17..b9d8dd4 100644
+--- a/config/debug/duma.in
++++ b/config/debug/duma.in
+@@ -2,6 +2,7 @@
+ 
+ ## depends on ! BARE_METAL
+ ## depends on ! LIBC_BIONIC
++## depends on ! ZEPHYR
+ 
+ ## help D.U.M.A. - Detect Unintended Memory Access
+ ## help A memory bound checker, with additional features.
+diff --git a/config/debug/gdb.in.native b/config/debug/gdb.in.native
+index 917a770..8bc018a 100644
+--- a/config/debug/gdb.in.native
++++ b/config/debug/gdb.in.native
+@@ -5,6 +5,7 @@ config GDB_NATIVE
+     prompt "Native gdb"
+     depends on ! BARE_METAL
+     depends on ! LIBC_BIONIC
++    depends on ! ZEPHYR
+     depends on CC_LANG_CXX || !GDB_8_0_or_later
+     select LIBC_UCLIBC_WCHAR if LIBC_UCLIBC && GDB_8_0_or_later
+     select LIBC_UCLIBC_IPV6 if LIBC_UCLIBC && GDB_8_3_or_later
+@@ -18,6 +19,7 @@ config GDB_GDBSERVER
+     prompt "gdbserver"
+     default y
+     depends on ! BARE_METAL
++    depends on ! ZEPHYR
+     select LIBC_UCLIBC_WCHAR if LIBC_UCLIBC && GDB_8_0_or_later
+     select LIBC_UCLIBC_IPV6 if LIBC_UCLIBC && GDB_8_3_or_later
+     help
+@@ -76,7 +78,7 @@ config GDB_NATIVE_STATIC_LIBSTDCXX
+ 
+ endif # GDB_NATIVE
+ 
+-if BARE_METAL
+-comment "In bare-metal, you'll need to   "
++if BARE_METAL || ZEPHYR
++comment "In bare-metal or Zephyr OS, you'll need to   "
+ comment "provide your own gdbserver stub."
+-endif # BARE_METAL
++endif # BARE_METAL || ZEPHYR
+diff --git a/config/kernel.in b/config/kernel.in
+index 5c8a519..7f3c6da 100644
+--- a/config/kernel.in
++++ b/config/kernel.in
+@@ -12,6 +12,10 @@ config BARE_METAL
+ config WINDOWS
+     bool
+ 
++# FIXME use CT_KERNEL_zephyr instead
++config ZEPHYR
++    bool
++
+ # Each target OS (aka kernel) that support shared libraries can select
+ # this, so the user can decide whether or not to build a shared library
+ # enabled toolchain
+diff --git a/config/kernel/zephyr.in b/config/kernel/zephyr.in
+new file mode 100644
+index 0000000..bd89402
+--- /dev/null
++++ b/config/kernel/zephyr.in
+@@ -0,0 +1,9 @@
++# windows config options
++
++## no-package
++## depend# Zephyr config options
++
++## no-package
++## select ZEPHYR
++##
++## help Build a toolchain targeting systems running Zephyr as host
+diff --git a/config/libc.in b/config/libc.in
+index c132fc6..641c152 100644
+--- a/config/libc.in
++++ b/config/libc.in
+@@ -95,6 +95,7 @@ config LIBC_XLDD
+     prompt "Install a cross ldd-like helper"
+     depends on SHARED_LIBS
+     depends on ! BARE_METAL
++    depends on ! ZEPHYR
+     default y
+     help
+       Say 'Y' here if you want to have a ldd-like helper that
+diff --git a/config/libc/bionic.in b/config/libc/bionic.in
+index 558c2b4..0b4a9f5 100644
+--- a/config/libc/bionic.in
++++ b/config/libc/bionic.in
+@@ -1,7 +1,7 @@
+ # bionic options
+ 
+ ## package android-ndk
+-## depends on ! WINDOWS && ! BARE_METAL
++## depends on ! WINDOWS && ! BARE_METAL && ! ZEPHYR
+ ## depends on ARCH_ARM || ARCH_MIPS || ARCH_X86
+ ## depends on EXPERIMENTAL
+ ## select GCC_REQUIRE_6_or_later
+diff --git a/config/libc/glibc.in b/config/libc/glibc.in
+index c753359..a54d78c 100644
+--- a/config/libc/glibc.in
++++ b/config/libc/glibc.in
+@@ -1,7 +1,7 @@
+ # This file contains the common configuration options
+ # that apply to both glibc.
+ 
+-## depends on ! WINDOWS && ! BARE_METAL && ARCH_USE_MMU
++## depends on ! WINDOWS && ! BARE_METAL && ARCH_USE_MMU && ! ZEPHYR
+ ## select LIBC_SUPPORT_THREADS_NATIVE
+ ## select CC_CORE_PASSES_NEEDED
+ # TBD: select GETTEXT for build only, not for host
+diff --git a/config/libc/moxiebox.in b/config/libc/moxiebox.in
+index e036641..8b69891 100644
+--- a/config/libc/moxiebox.in
++++ b/config/libc/moxiebox.in
+@@ -5,7 +5,7 @@
+ 
+ ## depends on ARCH_MOXIE
+ ## depends on ARCH_LE
+-## depends on BARE_METAL
++## depends on BARE_METAL || ZEPHYR
+ ## select LIBC_NEWLIB_SHOW
+ ## select LIBC_SUPPORT_THREADS_NONE
+ ## select COMP_TOOLS_AUTOCONF if !CONFIGURE_has_autoconf_2_65_or_newer || !CONFIGURE_has_autoreconf_2_64_or_newer
+diff --git a/config/libc/musl.in b/config/libc/musl.in
+index b2ed8bf..d0ba18f 100644
+--- a/config/libc/musl.in
++++ b/config/libc/musl.in
+@@ -1,6 +1,6 @@
+ # musl second-part option
+ 
+-## depends on ! WINDOWS && ! BARE_METAL
++## depends on ! WINDOWS && ! BARE_METAL && ! ZEPHYR
+ ## depends on EXPERIMENTAL
+ ## select LIBC_SUPPORT_THREADS_NATIVE
+ ## select CC_CORE_PASSES_NEEDED
+diff --git a/config/libc/newlib.in b/config/libc/newlib.in
+index d84db70..d5a5f6a 100644
+--- a/config/libc/newlib.in
++++ b/config/libc/newlib.in
+@@ -1,6 +1,6 @@
+ # newlib options
+ 
+-## depends on BARE_METAL
++## depends on BARE_METAL || ZEPHYR
+ ## select LIBC_SUPPORT_THREADS_NONE
+ ## select CC_CORE_PASSES_NEEDED if CANADIAN
+ ## select CC_CORE_PASS_2_NEEDED if ! CANADIAN
+diff --git a/config/libc/uClibc.in b/config/libc/uClibc.in
+index 21da64f..d61a807 100644
+--- a/config/libc/uClibc.in
++++ b/config/libc/uClibc.in
+@@ -1,6 +1,6 @@
+ # uClibc options
+ 
+-## depends on ! WINDOWS && ! BARE_METAL
++## depends on ! WINDOWS && ! BARE_METAL && ! ZEPHYR
+ ##
+ ## select LIBC_SUPPORT_THREADS_LT
+ ## select LIBC_SUPPORT_THREADS_NONE
+diff --git a/config/toolchain.in b/config/toolchain.in
+index 36a4782..0f8f2de 100644
+--- a/config/toolchain.in
++++ b/config/toolchain.in
+@@ -4,13 +4,14 @@ comment "General toolchain options"
+ 
+ config FORCE_SYSROOT
+     bool
+-    default y if !OBSOLETE && !BARE_METAL
++    default y if !OBSOLETE && (!BARE_METAL && !ZEPHYR)
+     select USE_SYSROOT
+ 
+ config USE_SYSROOT
+     bool
+     prompt "Use sysroot'ed toolchain"
+     depends on !BARE_METAL
++    depends on !ZEPHYR
+     default y
+     help
+       Use the 'shiny new' sysroot feature of gcc: libraries split between
+diff --git a/scripts/build/cc/gcc.sh b/scripts/build/cc/gcc.sh
+index 642fada..e28e566 100644
+--- a/scripts/build/cc/gcc.sh
++++ b/scripts/build/cc/gcc.sh
+@@ -267,7 +267,8 @@ do_cc_core_pass_2() {
+ # This function is used to build the core C compiler.
+ # Usage: do_gcc_core_backend param=value [...]
+ #   Parameter           : Definition                                : Type      : Default
+-#   mode                : build a 'static', 'shared' or 'baremetal' : string    : (none)
++#   mode                : build a 'static', 'shared', zephyr or 
++#                           'baremetal'                             : string    : (none)
+ #   host                : the machine the core will run on          : tuple     : (none)
+ #   prefix              : dir prefix to install into                : dir       : (none)
+ #   complibs            : dir where complibs are installed          : dir       : (none)
+@@ -281,7 +282,7 @@ do_cc_core_pass_2() {
+ #   ldflags             : ldflags to use                            : string    : (empty)
+ #   build_step          : build step 'core1', 'core2', 'gcc_build',
+ #                         'libstdcxx_nano' or 'gcc_host'            : string    : (none)
+-# Usage: do_gcc_core_backend mode=[static|shared|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
++# Usage: do_gcc_core_backend mode=[static|shared|zephyr|baremetal] build_libgcc=[yes|no] build_staticlinked=[yes|no]
+ do_gcc_core_backend() {
+     local mode
+     local build_libgcc=no
+@@ -349,13 +350,18 @@ do_gcc_core_backend() {
+         shared)
+             extra_config+=("--enable-shared")
+             ;;
++        zephyr)
++            extra_config+=("--with-newlib")
++            extra_config+=("--enable-threads=zephyr")
++            extra_config+=("--disable-shared")
++            ;;
+         baremetal)
+             extra_config+=("--with-newlib")
+             extra_config+=("--enable-threads=no")
+             extra_config+=("--disable-shared")
+             ;;
+         *)
+-            CT_Abort "Internal Error: 'mode' must be one of: 'static', 'shared' or 'baremetal', not '${mode:-(empty)}'"
++            CT_Abort "Internal Error: 'mode' must be one of: 'static', 'shared', 'zephyr' or 'baremetal', not '${mode:-(empty)}'"
+             ;;
+     esac
+ 
+@@ -378,6 +384,9 @@ do_gcc_core_backend() {
+     if [ -n "${CT_CC_GCC_ENABLE_CXX_FLAGS}" \
+             -a "${mode}" = "baremetal" ]; then
+         extra_config+=("--enable-cxx-flags=${CT_CC_GCC_ENABLE_CXX_FLAGS}")
++    elif [ -n "${CT_CC_GCC_ENABLE_CXX_FLAGS}" \
++            -a "${mode}" = "zephyr" ]; then
++        extra_config+=("--enable-cxx-flags=${CT_CC_GCC_ENABLE_CXX_FLAGS}")
+     fi
+ 
+     extra_config+=(--disable-libgomp)
+@@ -660,6 +669,10 @@ do_gcc_core_backend() {
+             repair_cc="CC_FOR_BUILD=${CT_BUILD}-gcc \
+                        CXX_FOR_BUILD=${CT_BUILD}-g++ \
+                        GCC_FOR_TARGET=${CT_TARGET}-${CT_CC}"
++        elif [ "${CT_ZEPHYR},${CT_CANADIAN}" = "y,y" ]; then
++            repair_cc="CC_FOR_BUILD=${CT_BUILD}-gcc \
++                       CXX_FOR_BUILD=${CT_BUILD}-g++ \
++                       GCC_FOR_TARGET=${CT_TARGET}-${CT_CC}"                      
+         else
+             repair_cc=""
+         fi
+@@ -772,6 +785,15 @@ do_cc_for_build() {
+             build_final_opts+=( "build_staticlinked=yes" )
+         fi
+         build_final_backend=do_gcc_core_backend
++    elif [ "${CT_ZEPHYR}" = "y" ]; then
++        build_final_opts+=( "mode=zephyr" )
++        build_final_opts+=( "build_libgcc=yes" )
++        build_final_opts+=( "build_libstdcxx=yes" )
++        build_final_opts+=( "build_libgfortran=yes" )
++        if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
++            build_final_opts+=( "build_staticlinked=yes" )
++        fi
++        build_final_backend=do_gcc_core_backend
+     else
+         build_final_backend=do_gcc_backend
+     fi
+@@ -861,6 +883,15 @@ do_cc_for_host() {
+             final_opts+=( "build_staticlinked=yes" )
+         fi
+         final_backend=do_gcc_core_backend
++    elif [ "${CT_ZEPHYR}" = "y" ]; then
++        final_opts+=( "mode=zephyr" )
++        final_opts+=( "build_libgcc=yes" )
++        final_opts+=( "build_libstdcxx=yes" )
++        final_opts+=( "build_libgfortran=yes" )
++        if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
++            final_opts+=( "build_staticlinked=yes" )
++        fi
++        final_backend=do_gcc_core_backend
+     else
+         final_backend=do_gcc_backend
+     fi
+@@ -908,6 +939,15 @@ do_cc_libstdcxx_nano()
+                 final_opts+=( "build_staticlinked=yes" )
+             fi
+             final_backend=do_gcc_core_backend
++        elif [ "${CT_ZEPHYR}" = "y" ]; then
++            final_opts+=( "mode=zephyr" )
++            final_opts+=( "build_libgcc=yes" )
++            final_opts+=( "build_libstdcxx=yes" )
++            final_opts+=( "build_libgfortran=yes" )
++            if [ "${CT_STATIC_TOOLCHAIN}" = "y" ]; then
++                final_opts+=( "build_staticlinked=yes" )
++            fi
++            final_backend=do_gcc_core_backend
+         else
+             final_backend=do_gcc_backend
+         fi
+diff --git a/scripts/build/internals.sh b/scripts/build/internals.sh
+index ed9e2b1..591c663 100644
+--- a/scripts/build/internals.sh
++++ b/scripts/build/internals.sh
+@@ -105,7 +105,7 @@ do_finish() {
+         CT_Popd
+     fi
+ 
+-    if [ "${CT_BARE_METAL}" != "y" ]; then
++    if [[ "${CT_BARE_METAL}" != "y" && "${CT_ZEPHYR}" != "y" ]]; then
+         CT_DoLog EXTRA "Installing the populate helper"
+         sed -r -e 's|@@CT_TARGET@@|'"${CT_TARGET}"'|g;' \
+                -e 's|@@CT_install@@|'"install"'|g;'     \
+diff --git a/scripts/build/kernel/zephyr.sh b/scripts/build/kernel/zephyr.sh
+new file mode 100644
+index 0000000..78d953a
+--- /dev/null
++++ b/scripts/build/kernel/zephyr.sh
+@@ -0,0 +1,24 @@
++# This file declares functions for Zephyr OS
++# Copyright 2020 Markus B. Moessner
++# Licensed under the GPL v2. See COPYING in the root of this package
++
++CT_DoKernelTupleValues()
++{
++    CT_DoStep INFO "Get Zephyr tuple"
++    CT_TARGET_KERNEL="zephyr2"
++}
++
++do_kernel_get()
++{
++    CT_DoStep INFO "Fetch Zephyr source"
++}
++
++do_kernel_extract()
++{
++    CT_DoStep INFO "Extract Zephyr source"
++}
++
++do_kernel_headers()
++{
++    CT_DoStep INFO "Install Zephyr headers"
++}
+\ No newline at end of file
+-- 
+2.7.4
+
