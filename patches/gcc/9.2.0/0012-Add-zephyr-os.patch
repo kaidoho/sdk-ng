@@ -1,0 +1,308 @@
+From b8c5eee357b49de63945af8c1592eaa2cdd58171 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 12 Jan 2020 11:30:40 +0100
+Subject: [PATCH 1/2] Add Zephyr OS
+
+---
+ config/gthr.m4              |   1 +
+ libgcc/config/gthr-zephyr.h | 250 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 251 insertions(+)
+ create mode 100644 libgcc/config/gthr-zephyr.h
+
+diff --git a/config/gthr.m4 b/config/gthr.m4
+index 7b29f1f33..265639b70 100644
+--- a/config/gthr.m4
++++ b/config/gthr.m4
+@@ -21,6 +21,7 @@ case $1 in
+     tpf)	thread_header=config/s390/gthr-tpf.h ;;
+     vxworks)	thread_header=config/gthr-vxworks.h ;;
+     win32)	thread_header=config/i386/gthr-win32.h ;;
++    zephyr)	thread_header=config/gthr-zephyr.h ;;
+ esac
+ AC_SUBST(thread_header)
+ ])
+diff --git a/libgcc/config/gthr-zephyr.h b/libgcc/config/gthr-zephyr.h
+new file mode 100644
+index 000000000..1504acf0e
+--- /dev/null
++++ b/libgcc/config/gthr-zephyr.h
+@@ -0,0 +1,250 @@
++/* Zephyr threads compatibility routines for libgcc2 and libobjc.
++   by: M.B.Moessner */
++/* Compile this one with gcc.  */
++/* Copyright (C) 1997-2019 Free Software Foundation, Inc.
++
++This file is part of GCC.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++Under Section 7 of GPL version 3, you are granted additional
++permissions described in the GCC Runtime Library Exception, version
++3.1, as published by the Free Software Foundation.
++
++You should have received a copy of the GNU General Public License and
++a copy of the GCC Runtime Library Exception along with this program;
++see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++<http://www.gnu.org/licenses/>.  */
++
++#ifndef GCC_GTHR_ZEPHYR_H
++#define GCC_GTHR_ZEPHYR_H
++
++#include <sys/lock.h>
++#include <sched.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#define __GTHREADS 1
++#define __GTHREADS_CXX0X 1
++#define __GTHREAD_HAS_COND 1
++
++typedef _zephyr_gthread_t __gthread_t;
++typedef _zephyr_gthread_key_t __gthread_key_t;
++typedef _zephyr_gthread_once_t __gthread_once_t;
++
++typedef struct _zephyr_gthread_mutex_t __gthread_mutex_t;
++typedef struct _zephyr_gthread_recursive_mutex_t __gthread_recursive_mutex_t;
++typedef struct _zephyr_gthread_cond_t __gthread_cond_t;
++typedef struct _zephyr_gthread_time_t __gthread_time_t;
++
++
++
++#define __GTHREAD_ONCE_INIT zephyr_gthread_once_init
++#define __GTHREAD_MUTEX_INIT zephyr_gthread_mutex_init
++#define __GTHREAD_MUTEX_INIT_FUNCTION zephyr_gthread_mutex_init_function
++#define __GTHREAD_RECURSIVE_MUTEX_INIT zephyr_gthread_recursive_mutex_init
++#define __GTHREAD_RECURSIVE_MUTEX_INIT_FUNCTION zephyr_gthread_recursive_mutex_init_function
++#define __GTHREAD_COND_INIT zephyr_gthread_condition_init
++#define __GTHREAD_COND_INIT_FUNCTION zephyr_gthread_condition_init_function
++#define __GTHREAD_TIME_INIT {0, 0}
++
++static inline int
++__gthread_active_p (void)
++{
++  return 1;
++}
++
++static inline int
++__gthread_create (__gthread_t *__threadid, void *(*__func) (void *),
++		  void *__args)
++{
++  return pthread_create (__threadid, NULL, __func, __args);
++}
++
++static inline int
++__gthread_join (__gthread_t __threadid, void **__value_ptr)
++{
++  return pthread_join (__threadid, __value_ptr);
++}
++
++static inline int
++__gthread_detach (__gthread_t __threadid)
++{
++  return pthread_detach (__threadid);
++}
++
++static inline int
++__gthread_equal (__gthread_t __t1, __gthread_t __t2)
++{
++  return zephyr_gthread_equal (__gthread_t __t1, __gthread_t __t2)
++ (__t1, __t2);
++}
++
++static inline __gthread_t
++__gthread_self (void)
++{
++  return zephyr_gthread_self ();
++}
++
++static inline int
++__gthread_yield (void)
++{
++  return zephyr_gthread_yield ();
++}
++
++static inline int
++__gthread_once (__gthread_once_t *__once, void (*__func) (void))
++{
++   return zephyr_gthread_once (__once, __func);
++}
++
++static inline int
++__gthread_key_create (__gthread_key_t *__key, void (*__dtor) (void *))
++{
++  return zephyr_gthread_key_create (__key, __dtor);
++}
++
++static inline int
++__gthread_key_delete (__gthread_key_t __key)
++{
++  return zephyr_gthread_key_delete (__key);
++}
++
++static inline void *
++__gthread_getspecific (__gthread_key_t __key)
++{
++  return zephyr_gthread_getspecific (__key);
++}
++
++static inline int
++__gthread_setspecific (__gthread_key_t __key, const void *__ptr)
++{
++  return zephyr_gthread_setspecific (__key, __ptr);
++}
++
++static inline int
++__gthread_mutex_lock (__gthread_mutex_t *__mutex)
++{
++  zephyr_gthread_mutex_lock (__mutex);
++  return 0;
++}
++
++static inline int
++__gthread_mutex_trylock (__gthread_mutex_t *__mutex)
++{
++  return zephyr_gthread_mutex_trylock (__mutex);
++}
++
++static inline int
++__gthread_mutex_timedlock (__gthread_mutex_t *__mutex,
++			   const __gthread_time_t *__abs_timeout)
++{
++  return zephyr_gthread_mutex_timedlock (__mutex, __abs_timeout);
++}
++
++static inline int
++__gthread_mutex_unlock (__gthread_mutex_t *__mutex)
++{
++  zephyr_gthread_mutex_unlock (__mutex);
++  return 0;
++}
++
++static inline int
++__gthread_mutex_destroy (__gthread_mutex_t *__mutex)
++{
++  zephyr_gthread_mutex_destroy (__mutex);
++  return 0;
++}
++
++static inline int
++__gthread_recursive_mutex_lock (__gthread_recursive_mutex_t *__mutex)
++{
++  zephyr_gthread_recursive_mutex_lock (__mutex);
++  return 0;
++}
++
++static inline int
++__gthread_recursive_mutex_trylock (__gthread_recursive_mutex_t *__mutex)
++{
++  return zephyr_gthread_recursive_mutex_trylock (__mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t *__mutex,
++				     const __gthread_time_t *__abs_timeout)
++{
++  return zephyr_gthread_recursive_mutex_timedlock (__mutex, __abs_timeout);
++}
++
++static inline int
++__gthread_recursive_mutex_unlock (__gthread_recursive_mutex_t *__mutex)
++{
++  zephyr_gthread_recursive_mutex_unlock (__mutex);
++  return 0;
++}
++
++static inline int
++__gthread_recursive_mutex_destroy (__gthread_recursive_mutex_t *__mutex)
++{
++  zephyr_gthread_recursive_mutex_destroy (__mutex);
++  return 0;
++}
++
++static inline int
++__gthread_cond_broadcast (__gthread_cond_t *__cond)
++{
++  zephyr_gthread_cond_broadcast (__cond);
++  return 0;
++}
++
++static inline int
++__gthread_cond_signal (__gthread_cond_t *__cond)
++{
++  zephyr_gthread_cond_signal (__cond);
++  return 0;
++}
++
++static inline int
++__gthread_cond_wait (__gthread_cond_t *__cond, __gthread_mutex_t *__mutex)
++{
++  zephyr_gthread_cond_wait (__cond, __mutex);
++  return 0;
++}
++
++static inline int
++__gthread_cond_timedwait (__gthread_cond_t *__cond, __gthread_mutex_t *__mutex,
++			  const __gthread_time_t *__abs_timeout)
++{
++  return zephyr_gthread_cond_timedwait (__cond, __mutex, __abs_timeout);
++}
++
++static inline int
++__gthread_cond_wait_recursive (__gthread_cond_t *__cond,
++			       __gthread_recursive_mutex_t *__mutex)
++{
++  zephyr_gthread_cond_wait_recursive (__cond, __mutex);
++  return 0;
++}
++
++static inline int
++__gthread_cond_destroy (__gthread_cond_t *__cond)
++{
++  zephyr_gthread_cond_destroy (__cond);
++  return 0;
++}
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* ! GCC_GTHR_ZEPHYR_H */
+-- 
+2.17.1
+
+
+From ceb69e59f758c7776ef3b246ac5591aaf046a03d Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 12 Jan 2020 12:01:39 +0100
+Subject: [PATCH 2/2] Add Zephyr OS
+
+---
+ gcc/configure | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gcc/configure b/gcc/configure
+index 481071b42..8ef2f7b4a 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -11861,7 +11861,7 @@ case ${enable_threads} in
+     target_thread_file='single'
+     ;;
+   aix | dce | lynx | mipssde | posix | rtems | \
+-  single | tpf | vxworks | win32)
++  single | tpf | vxworks | win32 | zephyr)
+     target_thread_file=${enable_threads}
+     ;;
+   *)
+-- 
+2.17.1
+
