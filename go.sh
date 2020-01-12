@@ -12,7 +12,7 @@ if [ "$TARGETS" == "all" ]; then
 	TARGETS=${TARGETS}" tools"
 fi
 
-COMMIT="40a60eaf68761297404ad19a77b7e79ef0b56eaa"
+COMMIT="d0bb91019cd51d08586b3f344ebef789119f2f50"
 GITDIR=${PWD}
 JOBS=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())')
 
@@ -54,7 +54,7 @@ if [ ! -d "crosstool-ng" ]; then
 	echo "Patching tree"
 	pushd crosstool-ng
 	git checkout ${COMMIT}
-	#for p in ${GITDIR}/patches/*.patch; do patch -p1 < $p; done
+	for p in ${GITDIR}/patches/*.patch; do patch -p1 < $p; done
 	popd
 fi
 
