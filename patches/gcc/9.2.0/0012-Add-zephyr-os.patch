@@ -1,7 +1,7 @@
 From b8c5eee357b49de63945af8c1592eaa2cdd58171 Mon Sep 17 00:00:00 2001
 From: kaidoho <kho237115@gmail.com>
 Date: Sun, 12 Jan 2020 11:30:40 +0100
-Subject: [PATCH 1/2] Add Zephyr OS
+Subject: [PATCH 1/5] Add Zephyr OS
 
 ---
  config/gthr.m4              |   1 +
@@ -284,7 +284,7 @@ index 000000000..1504acf0e
 From ceb69e59f758c7776ef3b246ac5591aaf046a03d Mon Sep 17 00:00:00 2001
 From: kaidoho <kho237115@gmail.com>
 Date: Sun, 12 Jan 2020 12:01:39 +0100
-Subject: [PATCH 2/2] Add Zephyr OS
+Subject: [PATCH 2/5] Add Zephyr OS
 
 ---
  gcc/configure | 2 +-
@@ -303,6 +303,241 @@ index 481071b42..8ef2f7b4a 100755
      target_thread_file=${enable_threads}
      ;;
    *)
+-- 
+2.17.1
+
+
+From 90ad1696988c5d0fd8b6ce27b832b142de95f23e Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 12 Jan 2020 18:48:49 +0100
+Subject: [PATCH 3/5] fix
+
+---
+ libgcc/configure       | 1 +
+ libstdc++-v3/configure | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/libgcc/configure b/libgcc/configure
+index 36dbbc1f6..95948123f 100644
+--- a/libgcc/configure
++++ b/libgcc/configure
+@@ -5550,6 +5550,7 @@ case $target_thread_file in
+     tpf)	thread_header=config/s390/gthr-tpf.h ;;
+     vxworks)	thread_header=config/gthr-vxworks.h ;;
+     win32)	thread_header=config/i386/gthr-win32.h ;;
++    zephyr)	thread_header=config/gthr-zephyr.h ;;
+ esac
+ 
+ 
+diff --git a/libstdc++-v3/configure b/libstdc++-v3/configure
+index 5acf79cba..c62d4a212 100755
+--- a/libstdc++-v3/configure
++++ b/libstdc++-v3/configure
+@@ -15426,6 +15426,7 @@ case $target_thread_file in
+     tpf)	thread_header=config/s390/gthr-tpf.h ;;
+     vxworks)	thread_header=config/gthr-vxworks.h ;;
+     win32)	thread_header=config/i386/gthr-win32.h ;;
++    zephyr)	thread_header=config/gthr-zephyr.h ;;
+ esac
+ 
+ 
+-- 
+2.17.1
+
+
+From a15f6b773dc39c08ba67c98a0939925d5e0d2f9e Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 12 Jan 2020 21:23:54 +0100
+Subject: [PATCH 4/5] fix
+
+---
+ libgcc/config/gthr-zephyr.h | 126 ++++++++++++++++++++++++++++++++----
+ 1 file changed, 115 insertions(+), 11 deletions(-)
+
+diff --git a/libgcc/config/gthr-zephyr.h b/libgcc/config/gthr-zephyr.h
+index 1504acf0e..9ec2f369a 100644
+--- a/libgcc/config/gthr-zephyr.h
++++ b/libgcc/config/gthr-zephyr.h
+@@ -27,8 +27,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #ifndef GCC_GTHR_ZEPHYR_H
+ #define GCC_GTHR_ZEPHYR_H
+ 
+-#include <sys/lock.h>
+-#include <sched.h>
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -38,15 +36,121 @@ extern "C" {
+ #define __GTHREADS_CXX0X 1
+ #define __GTHREAD_HAS_COND 1
+ 
+-typedef _zephyr_gthread_t __gthread_t;
+-typedef _zephyr_gthread_key_t __gthread_key_t;
+-typedef _zephyr_gthread_once_t __gthread_once_t;
++typedef struct zephyr_gthread_t
++{
++  char buffer[48];   
++} zephyr_gthread_t;
++
++typedef int zephyr_gthread_key_t;
++typedef int __gthread_once_t;
++
++typedef struct zephyr_gthread_mutex_t
++{
++  char buffer[48];   
++} zephyr_gthread_mutex_t;
++
++typedef struct zephyr_gthread_recursive_mutex_t
++{
++  char buffer[64];   
++} zephyr_gthread_recursive_mutex_t;
++
++
++typedef zephyr_gthread_t __gthread_t;
++typedef zephyr_gthread_key_t __gthread_key_t;
++typedef zephyr_gthread_once_t __gthread_once_t;
++
++typedef struct zephyr_gthread_mutex_t __gthread_mutex_t;
++typedef struct zephyr_gthread_recursive_mutex_t __gthread_recursive_mutex_t;
++typedef struct zephyr_gthread_cond_t __gthread_cond_t;
++typedef struct zephyr_gthread_time_t __gthread_time_t;
++
++#define __ZEPHYR_STUB __attribute__ ((visibility ("default"))) __attribute__((weak))
++
++extern __ZEPHYR_STUB int 
++zephyr_gthread_create (__gthread_t *__threadid, void *(*__func) (void *);
++
++extern __ZEPHYR_STUB int 
++zephyr_gthread_join (__gthread_t __threadid, void **__value_ptr);
++
++
++extern __ZEPHYR_STUB int 
++zephyr_gthread_detach (__gthread_t __threadid);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_equal (__gthread_t __t1, __gthread_t __t2);
++
++extern __ZEPHYR_STUB __gthread_t
++zephyr_gthread_self (void);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_yield (void);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_once (__gthread_once_t *__once, void (*__func) (void));
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_key_create (__gthread_key_t *__key, void (*__dtor) (void *));
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_key_delete (__gthread_key_t __key);
++
++extern __ZEPHYR_STUB  void *
++zephyr_gthread_getspecific (__gthread_key_t __key);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_setspecific (__gthread_key_t __key, const void *__ptr);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_mutex_lock (__gthread_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_mutex_trylock (__gthread_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_mutex_timedlock (__gthread_mutex_t *__mutex,
++			   const __gthread_time_t *__abs_timeout);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_mutex_unlock (__gthread_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_mutex_destroy (__gthread_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_recursive_mutex_lock (__gthread_recursive_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB int
++zephyr_gthread_recursive_mutex_trylock (__gthread_recursive_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t *__mutex,
++				     const __gthread_time_t *__abs_timeout);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_recursive_mutex_unlock (__gthread_recursive_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_recursive_mutex_destroy (__gthread_recursive_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_cond_broadcast (__gthread_cond_t *__cond);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_cond_signal (__gthread_cond_t *__cond);
++
++extern __ZEPHYR_STUB  int
++zephyr_gthread_cond_wait (__gthread_cond_t *__cond, __gthread_mutex_t *__mutex);
++
++extern __ZEPHYR_STUB int
++zephyr_gthread_cond_timedwait (__gthread_cond_t *__cond, __gthread_mutex_t *__mutex,
++			  const __gthread_time_t *__abs_timeout);
+ 
+-typedef struct _zephyr_gthread_mutex_t __gthread_mutex_t;
+-typedef struct _zephyr_gthread_recursive_mutex_t __gthread_recursive_mutex_t;
+-typedef struct _zephyr_gthread_cond_t __gthread_cond_t;
+-typedef struct _zephyr_gthread_time_t __gthread_time_t;
++extern __ZEPHYR_STUB  int 
++zephyr_gthread_cond_wait_recursive (__gthread_cond_t *__cond,
++			       __gthread_recursive_mutex_t *__mutex);
+ 
++extern __ZEPHYR_STUB int 
++zephyr_gthread_cond_destroy (__gthread_cond_t *__cond);
+ 
+ 
+ #define __GTHREAD_ONCE_INIT zephyr_gthread_once_init
+@@ -68,13 +172,13 @@ static inline int
+ __gthread_create (__gthread_t *__threadid, void *(*__func) (void *),
+ 		  void *__args)
+ {
+-  return pthread_create (__threadid, NULL, __func, __args);
++  return zephyr_gthread_create (__threadid, NULL, __func, __args);
+ }
+ 
+ static inline int
+ __gthread_join (__gthread_t __threadid, void **__value_ptr)
+ {
+-  return pthread_join (__threadid, __value_ptr);
++  return zephyr_gthread_join (__threadid, __value_ptr);
+ }
+ 
+ static inline int
+-- 
+2.17.1
+
+
+From ca7829686342690b5751f0ad609083881c46d21c Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 12 Jan 2020 22:16:04 +0100
+Subject: [PATCH 5/5] fix
+
+---
+ libgcc/config/gthr-zephyr.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libgcc/config/gthr-zephyr.h b/libgcc/config/gthr-zephyr.h
+index 9ec2f369a..0ca861d3d 100644
+--- a/libgcc/config/gthr-zephyr.h
++++ b/libgcc/config/gthr-zephyr.h
+@@ -42,7 +42,7 @@ typedef struct zephyr_gthread_t
+ } zephyr_gthread_t;
+ 
+ typedef int zephyr_gthread_key_t;
+-typedef int __gthread_once_t;
++typedef int zephyr_gthread_once_t;
+ 
+ typedef struct zephyr_gthread_mutex_t
+ {
 -- 
 2.17.1
 
