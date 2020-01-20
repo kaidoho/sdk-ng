@@ -1,7 +1,7 @@
 From a7115cf230ef19a18586e9bc0b535b7a3c8f8383 Mon Sep 17 00:00:00 2001
 From: kaidoho <kho237115@gmail.com>
 Date: Fri, 17 Jan 2020 20:06:49 +0100
-Subject: [PATCH] fix
+Subject: [PATCH 01/22] fix
 
 ---
  config/gthr.m4                            |    1 +
@@ -6796,6 +6796,3424 @@ index 0000000..fe37839
 +{
 +    return -1;
 +}
+-- 
+2.17.1
+
+
+From 18e1a860d31bc1ef7fa91cdfaa64ef4462c7360b Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sat, 18 Jan 2020 16:03:17 +0100
+Subject: [PATCH 02/22] fix
+
+---
+ configure                                 |   3 +
+ newlib/libc/sys/zephyr/Makefile.in        |   1 +
+ newlib/libc/sys/zephyr/aclocal.m4         | 653 +++++++++-------------
+ newlib/libc/sys/zephyr/configure          | 245 +++-----
+ newlib/libc/sys/zephyr/include/sys/lock.h |   7 +-
+ 5 files changed, 341 insertions(+), 568 deletions(-)
+
+diff --git a/configure b/configure
+index 5db5270..b017a0a 100755
+--- a/configure
++++ b/configure
+@@ -3484,6 +3484,9 @@ case "${target}" in
+   *-*-vxworks*)
+     noconfigdirs="$noconfigdirs ${libgcj}"
+     ;;
++  *-*-zephyr*)
++    noconfigdirs="$noconfigdirs ${libgcj}"
++    ;;
+   alpha*-*-*vms*)
+     noconfigdirs="$noconfigdirs ${libgcj}"
+     ;;
+diff --git a/newlib/libc/sys/zephyr/Makefile.in b/newlib/libc/sys/zephyr/Makefile.in
+index 357cab8..dbaf454 100644
+--- a/newlib/libc/sys/zephyr/Makefile.in
++++ b/newlib/libc/sys/zephyr/Makefile.in
+@@ -180,6 +180,7 @@ pdfdir = @pdfdir@
+ prefix = @prefix@
+ program_transform_name = @program_transform_name@
+ psdir = @psdir@
++runstatedir = @runstatedir@
+ sbindir = @sbindir@
+ sharedstatedir = @sharedstatedir@
+ srcdir = @srcdir@
+diff --git a/newlib/libc/sys/zephyr/aclocal.m4 b/newlib/libc/sys/zephyr/aclocal.m4
+index 00e6acc..62fe272 100644
+--- a/newlib/libc/sys/zephyr/aclocal.m4
++++ b/newlib/libc/sys/zephyr/aclocal.m4
+@@ -1,7 +1,8 @@
+-# generated automatically by aclocal 1.15.1 -*- Autoconf -*-
+-
+-# Copyright (C) 1996-2017 Free Software Foundation, Inc.
++# generated automatically by aclocal 1.11.6 -*- Autoconf -*-
+ 
++# Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
++# 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation,
++# Inc.
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+@@ -11,31 +12,33 @@
+ # even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ # PARTICULAR PURPOSE.
+ 
+-m4_ifndef([AC_CONFIG_MACRO_DIRS], [m4_defun([_AM_CONFIG_MACRO_DIRS], [])m4_defun([AC_CONFIG_MACRO_DIRS], [_AM_CONFIG_MACRO_DIRS($@)])])
+ m4_ifndef([AC_AUTOCONF_VERSION],
+   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
+ m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.69],,
+ [m4_warning([this file was generated for autoconf 2.69.
+ You have another version of autoconf.  It may work, but is not guaranteed to.
+ If you have problems, you may need to regenerate the build system entirely.
+-To do so, use the procedure documented by the package, typically 'autoreconf'.])])
++To do so, use the procedure documented by the package, typically `autoreconf'.])])
+ 
+-# Copyright (C) 2002-2017 Free Software Foundation, Inc.
++# Copyright (C) 2002, 2003, 2005, 2006, 2007, 2008, 2011 Free Software
++# Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 1
++
+ # AM_AUTOMAKE_VERSION(VERSION)
+ # ----------------------------
+ # Automake X.Y traces this macro to ensure aclocal.m4 has been
+ # generated from the m4 files accompanying Automake X.Y.
+ # (This private macro should not be called outside this file.)
+ AC_DEFUN([AM_AUTOMAKE_VERSION],
+-[am__api_version='1.15'
++[am__api_version='1.11'
+ dnl Some users find AM_AUTOMAKE_VERSION and mistake it for a way to
+ dnl require some minimum version.  Point them to the right macro.
+-m4_if([$1], [1.15.1], [],
++m4_if([$1], [1.11.6], [],
+       [AC_FATAL([Do not call $0, use AM_INIT_AUTOMAKE([$1]).])])dnl
+ ])
+ 
+@@ -51,22 +54,24 @@ m4_define([_AM_AUTOCONF_VERSION], [])
+ # Call AM_AUTOMAKE_VERSION and AM_AUTOMAKE_VERSION so they can be traced.
+ # This function is AC_REQUIREd by AM_INIT_AUTOMAKE.
+ AC_DEFUN([AM_SET_CURRENT_AUTOMAKE_VERSION],
+-[AM_AUTOMAKE_VERSION([1.15.1])dnl
++[AM_AUTOMAKE_VERSION([1.11.6])dnl
+ m4_ifndef([AC_AUTOCONF_VERSION],
+   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
+ _AM_AUTOCONF_VERSION(m4_defn([AC_AUTOCONF_VERSION]))])
+ 
+ # AM_AUX_DIR_EXPAND                                         -*- Autoconf -*-
+ 
+-# Copyright (C) 2001-2017 Free Software Foundation, Inc.
++# Copyright (C) 2001, 2003, 2005, 2011 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 1
++
+ # For projects using AC_CONFIG_AUX_DIR([foo]), Autoconf sets
+-# $ac_aux_dir to '$srcdir/foo'.  In other projects, it is set to
+-# '$srcdir', '$srcdir/..', or '$srcdir/../..'.
++# $ac_aux_dir to `$srcdir/foo'.  In other projects, it is set to
++# `$srcdir', `$srcdir/..', or `$srcdir/../..'.
+ #
+ # Of course, Automake must honor this variable whenever it calls a
+ # tool from the auxiliary directory.  The problem is that $srcdir (and
+@@ -85,7 +90,7 @@ _AM_AUTOCONF_VERSION(m4_defn([AC_AUTOCONF_VERSION]))])
+ #
+ # The reason of the latter failure is that $top_srcdir and $ac_aux_dir
+ # are both prefixed by $srcdir.  In an in-source build this is usually
+-# harmless because $srcdir is '.', but things will broke when you
++# harmless because $srcdir is `.', but things will broke when you
+ # start a VPATH build or use an absolute $srcdir.
+ #
+ # So we could use something similar to $top_srcdir/$ac_aux_dir/missing,
+@@ -103,26 +108,30 @@ _AM_AUTOCONF_VERSION(m4_defn([AC_AUTOCONF_VERSION]))])
+ # configured tree to be moved without reconfiguration.
+ 
+ AC_DEFUN([AM_AUX_DIR_EXPAND],
+-[AC_REQUIRE([AC_CONFIG_AUX_DIR_DEFAULT])dnl
+-# Expand $ac_aux_dir to an absolute path.
+-am_aux_dir=`cd "$ac_aux_dir" && pwd`
++[dnl Rely on autoconf to set up CDPATH properly.
++AC_PREREQ([2.50])dnl
++# expand $ac_aux_dir to an absolute path
++am_aux_dir=`cd $ac_aux_dir && pwd`
+ ])
+ 
+ # AM_CONDITIONAL                                            -*- Autoconf -*-
+ 
+-# Copyright (C) 1997-2017 Free Software Foundation, Inc.
++# Copyright (C) 1997, 2000, 2001, 2003, 2004, 2005, 2006, 2008
++# Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 9
++
+ # AM_CONDITIONAL(NAME, SHELL-CONDITION)
+ # -------------------------------------
+ # Define a conditional.
+ AC_DEFUN([AM_CONDITIONAL],
+-[AC_PREREQ([2.52])dnl
+- m4_if([$1], [TRUE],  [AC_FATAL([$0: invalid condition: $1])],
+-       [$1], [FALSE], [AC_FATAL([$0: invalid condition: $1])])dnl
++[AC_PREREQ(2.52)dnl
++ ifelse([$1], [TRUE],  [AC_FATAL([$0: invalid condition: $1])],
++	[$1], [FALSE], [AC_FATAL([$0: invalid condition: $1])])dnl
+ AC_SUBST([$1_TRUE])dnl
+ AC_SUBST([$1_FALSE])dnl
+ _AM_SUBST_NOTMAKE([$1_TRUE])dnl
+@@ -141,14 +150,16 @@ AC_CONFIG_COMMANDS_PRE(
+ Usually this means the macro was only invoked conditionally.]])
+ fi])])
+ 
+-# Copyright (C) 1999-2017 Free Software Foundation, Inc.
++# Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2009,
++# 2010, 2011 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 12
+ 
+-# There are a few dirty hacks below to avoid letting 'AC_PROG_CC' be
++# There are a few dirty hacks below to avoid letting `AC_PROG_CC' be
+ # written in clear, in which case automake, when reading aclocal.m4,
+ # will think it sees a *use*, and therefore will trigger all it's
+ # C support machinery.  Also note that it means that autoscan, seeing
+@@ -158,7 +169,7 @@ fi])])
+ # _AM_DEPENDENCIES(NAME)
+ # ----------------------
+ # See how the compiler implements dependency checking.
+-# NAME is "CC", "CXX", "OBJC", "OBJCXX", "UPC", or "GJC".
++# NAME is "CC", "CXX", "GCJ", or "OBJC".
+ # We try a few techniques and use that to set a single cache variable.
+ #
+ # We don't AC_REQUIRE the corresponding AC_PROG_CC since the latter was
+@@ -171,13 +182,12 @@ AC_REQUIRE([AM_OUTPUT_DEPENDENCY_COMMANDS])dnl
+ AC_REQUIRE([AM_MAKE_INCLUDE])dnl
+ AC_REQUIRE([AM_DEP_TRACK])dnl
+ 
+-m4_if([$1], [CC],   [depcc="$CC"   am_compiler_list=],
+-      [$1], [CXX],  [depcc="$CXX"  am_compiler_list=],
+-      [$1], [OBJC], [depcc="$OBJC" am_compiler_list='gcc3 gcc'],
+-      [$1], [OBJCXX], [depcc="$OBJCXX" am_compiler_list='gcc3 gcc'],
+-      [$1], [UPC],  [depcc="$UPC"  am_compiler_list=],
+-      [$1], [GCJ],  [depcc="$GCJ"  am_compiler_list='gcc3 gcc'],
+-                    [depcc="$$1"   am_compiler_list=])
++ifelse([$1], CC,   [depcc="$CC"   am_compiler_list=],
++       [$1], CXX,  [depcc="$CXX"  am_compiler_list=],
++       [$1], OBJC, [depcc="$OBJC" am_compiler_list='gcc3 gcc'],
++       [$1], UPC,  [depcc="$UPC"  am_compiler_list=],
++       [$1], GCJ,  [depcc="$GCJ"  am_compiler_list='gcc3 gcc'],
++                   [depcc="$$1"   am_compiler_list=])
+ 
+ AC_CACHE_CHECK([dependency style of $depcc],
+                [am_cv_$1_dependencies_compiler_type],
+@@ -185,8 +195,8 @@ AC_CACHE_CHECK([dependency style of $depcc],
+   # We make a subdir and do the tests there.  Otherwise we can end up
+   # making bogus files that we don't know about and never remove.  For
+   # instance it was reported that on HP-UX the gcc test will end up
+-  # making a dummy file named 'D' -- because '-MD' means "put the output
+-  # in D".
++  # making a dummy file named `D' -- because `-MD' means `put the output
++  # in D'.
+   rm -rf conftest.dir
+   mkdir conftest.dir
+   # Copy depcomp to subdir because otherwise we won't find it if we're
+@@ -226,16 +236,16 @@ AC_CACHE_CHECK([dependency style of $depcc],
+     : > sub/conftest.c
+     for i in 1 2 3 4 5 6; do
+       echo '#include "conftst'$i'.h"' >> sub/conftest.c
+-      # Using ": > sub/conftst$i.h" creates only sub/conftst1.h with
+-      # Solaris 10 /bin/sh.
+-      echo '/* dummy */' > sub/conftst$i.h
++      # Using `: > sub/conftst$i.h' creates only sub/conftst1.h with
++      # Solaris 8's {/usr,}/bin/sh.
++      touch sub/conftst$i.h
+     done
+     echo "${am__include} ${am__quote}sub/conftest.Po${am__quote}" > confmf
+ 
+-    # We check with '-c' and '-o' for the sake of the "dashmstdout"
++    # We check with `-c' and `-o' for the sake of the "dashmstdout"
+     # mode.  It turns out that the SunPro C++ compiler does not properly
+-    # handle '-M -o', and we need to detect this.  Also, some Intel
+-    # versions had trouble with output in subdirs.
++    # handle `-M -o', and we need to detect this.  Also, some Intel
++    # versions had trouble with output in subdirs
+     am__obj=sub/conftest.${OBJEXT-o}
+     am__minus_obj="-o $am__obj"
+     case $depmode in
+@@ -244,8 +254,8 @@ AC_CACHE_CHECK([dependency style of $depcc],
+       test "$am__universal" = false || continue
+       ;;
+     nosideeffect)
+-      # After this tag, mechanisms are not by side-effect, so they'll
+-      # only be used when explicitly requested.
++      # after this tag, mechanisms are not by side-effect, so they'll
++      # only be used when explicitly requested
+       if test "x$enable_dependency_tracking" = xyes; then
+ 	continue
+       else
+@@ -253,7 +263,7 @@ AC_CACHE_CHECK([dependency style of $depcc],
+       fi
+       ;;
+     msvc7 | msvc7msys | msvisualcpp | msvcmsys)
+-      # This compiler won't grok '-c -o', but also, the minuso test has
++      # This compiler won't grok `-c -o', but also, the minuso test has
+       # not run yet.  These depmodes are late enough in the game, and
+       # so weak that their functioning should not be impacted.
+       am__obj=conftest.${OBJEXT-o}
+@@ -301,7 +311,7 @@ AM_CONDITIONAL([am__fastdep$1], [
+ # AM_SET_DEPDIR
+ # -------------
+ # Choose a directory name for dependency files.
+-# This macro is AC_REQUIREd in _AM_DEPENDENCIES.
++# This macro is AC_REQUIREd in _AM_DEPENDENCIES
+ AC_DEFUN([AM_SET_DEPDIR],
+ [AC_REQUIRE([AM_SET_LEADING_DOT])dnl
+ AC_SUBST([DEPDIR], ["${am__leading_dot}deps"])dnl
+@@ -311,13 +321,9 @@ AC_SUBST([DEPDIR], ["${am__leading_dot}deps"])dnl
+ # AM_DEP_TRACK
+ # ------------
+ AC_DEFUN([AM_DEP_TRACK],
+-[AC_ARG_ENABLE([dependency-tracking], [dnl
+-AS_HELP_STRING(
+-  [--enable-dependency-tracking],
+-  [do not reject slow dependency extractors])
+-AS_HELP_STRING(
+-  [--disable-dependency-tracking],
+-  [speeds up one-time build])])
++[AC_ARG_ENABLE(dependency-tracking,
++[  --disable-dependency-tracking  speeds up one-time build
++  --enable-dependency-tracking   do not reject slow dependency extractors])
+ if test "x$enable_dependency_tracking" != xno; then
+   am_depcomp="$ac_aux_dir/depcomp"
+   AMDEPBACKSLASH='\'
+@@ -332,18 +338,20 @@ _AM_SUBST_NOTMAKE([am__nodep])dnl
+ 
+ # Generate code to set up dependency tracking.              -*- Autoconf -*-
+ 
+-# Copyright (C) 1999-2017 Free Software Foundation, Inc.
++# Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2008
++# Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++#serial 5
+ 
+ # _AM_OUTPUT_DEPENDENCY_COMMANDS
+ # ------------------------------
+ AC_DEFUN([_AM_OUTPUT_DEPENDENCY_COMMANDS],
+ [{
+-  # Older Autoconf quotes --file arguments for eval, but not when files
++  # Autoconf 2.62 quotes --file arguments for eval, but not when files
+   # are listed without --file.  Let's play safe and only enable the eval
+   # if we detect the quoting.
+   case $CONFIG_FILES in
+@@ -356,7 +364,7 @@ AC_DEFUN([_AM_OUTPUT_DEPENDENCY_COMMANDS],
+     # Strip MF so we end up with the name of the file.
+     mf=`echo "$mf" | sed -e 's/:.*$//'`
+     # Check whether this is an Automake generated Makefile or not.
+-    # We used to match only the files named 'Makefile.in', but
++    # We used to match only the files named `Makefile.in', but
+     # some people rename them; so instead we look at the file content.
+     # Grep'ing the first line is not enough: some people post-process
+     # each Makefile.in and add a new line on top of each file to say so.
+@@ -368,19 +376,21 @@ AC_DEFUN([_AM_OUTPUT_DEPENDENCY_COMMANDS],
+       continue
+     fi
+     # Extract the definition of DEPDIR, am__include, and am__quote
+-    # from the Makefile without running 'make'.
++    # from the Makefile without running `make'.
+     DEPDIR=`sed -n 's/^DEPDIR = //p' < "$mf"`
+     test -z "$DEPDIR" && continue
+     am__include=`sed -n 's/^am__include = //p' < "$mf"`
+-    test -z "$am__include" && continue
++    test -z "am__include" && continue
+     am__quote=`sed -n 's/^am__quote = //p' < "$mf"`
++    # When using ansi2knr, U may be empty or an underscore; expand it
++    U=`sed -n 's/^U = //p' < "$mf"`
+     # Find all dependency output files, they are included files with
+     # $(DEPDIR) in their names.  We invoke sed twice because it is the
+     # simplest approach to changing $(DEPDIR) to its actual value in the
+     # expansion.
+     for file in `sed -n "
+       s/^$am__include $am__quote\(.*(DEPDIR).*\)$am__quote"'$/\1/p' <"$mf" | \
+-	 sed -e 's/\$(DEPDIR)/'"$DEPDIR"'/g'`; do
++	 sed -e 's/\$(DEPDIR)/'"$DEPDIR"'/g' -e 's/\$U/'"$U"'/g'`; do
+       # Make sure the directory exists.
+       test -f "$dirpart/$file" && continue
+       fdir=`AS_DIRNAME(["$file"])`
+@@ -398,7 +408,7 @@ AC_DEFUN([_AM_OUTPUT_DEPENDENCY_COMMANDS],
+ # This macro should only be invoked once -- use via AC_REQUIRE.
+ #
+ # This code is only required when automatic dependency tracking
+-# is enabled.  FIXME.  This creates each '.P' file that we will
++# is enabled.  FIXME.  This creates each `.P' file that we will
+ # need in order to bootstrap the dependency handling code.
+ AC_DEFUN([AM_OUTPUT_DEPENDENCY_COMMANDS],
+ [AC_CONFIG_COMMANDS([depfiles],
+@@ -408,21 +418,18 @@ AC_DEFUN([AM_OUTPUT_DEPENDENCY_COMMANDS],
+ 
+ # Do all the work for Automake.                             -*- Autoconf -*-
+ 
+-# Copyright (C) 1996-2017 Free Software Foundation, Inc.
++# Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
++# 2005, 2006, 2008, 2009 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 16
++
+ # This macro actually does too much.  Some checks are only needed if
+ # your package does certain things.  But this isn't really a big deal.
+ 
+-dnl Redefine AC_PROG_CC to automatically invoke _AM_PROG_CC_C_O.
+-m4_define([AC_PROG_CC],
+-m4_defn([AC_PROG_CC])
+-[_AM_PROG_CC_C_O
+-])
+-
+ # AM_INIT_AUTOMAKE(PACKAGE, VERSION, [NO-DEFINE])
+ # AM_INIT_AUTOMAKE([OPTIONS])
+ # -----------------------------------------------
+@@ -435,7 +442,7 @@ m4_defn([AC_PROG_CC])
+ # arguments mandatory, and then we can depend on a new Autoconf
+ # release and drop the old call support.
+ AC_DEFUN([AM_INIT_AUTOMAKE],
+-[AC_PREREQ([2.65])dnl
++[AC_PREREQ([2.62])dnl
+ dnl Autoconf wants to disallow AM_ names.  We explicitly allow
+ dnl the ones we care about.
+ m4_pattern_allow([^AM_[A-Z]+FLAGS$])dnl
+@@ -464,42 +471,33 @@ AC_SUBST([CYGPATH_W])
+ # Define the identity of the package.
+ dnl Distinguish between old-style and new-style calls.
+ m4_ifval([$2],
+-[AC_DIAGNOSE([obsolete],
+-             [$0: two- and three-arguments forms are deprecated.])
+-m4_ifval([$3], [_AM_SET_OPTION([no-define])])dnl
++[m4_ifval([$3], [_AM_SET_OPTION([no-define])])dnl
+  AC_SUBST([PACKAGE], [$1])dnl
+  AC_SUBST([VERSION], [$2])],
+ [_AM_SET_OPTIONS([$1])dnl
+ dnl Diagnose old-style AC_INIT with new-style AM_AUTOMAKE_INIT.
+-m4_if(
+-  m4_ifdef([AC_PACKAGE_NAME], [ok]):m4_ifdef([AC_PACKAGE_VERSION], [ok]),
+-  [ok:ok],,
++m4_if(m4_ifdef([AC_PACKAGE_NAME], 1)m4_ifdef([AC_PACKAGE_VERSION], 1), 11,,
+   [m4_fatal([AC_INIT should be called with package and version arguments])])dnl
+  AC_SUBST([PACKAGE], ['AC_PACKAGE_TARNAME'])dnl
+  AC_SUBST([VERSION], ['AC_PACKAGE_VERSION'])])dnl
+ 
+ _AM_IF_OPTION([no-define],,
+-[AC_DEFINE_UNQUOTED([PACKAGE], ["$PACKAGE"], [Name of package])
+- AC_DEFINE_UNQUOTED([VERSION], ["$VERSION"], [Version number of package])])dnl
++[AC_DEFINE_UNQUOTED(PACKAGE, "$PACKAGE", [Name of package])
++ AC_DEFINE_UNQUOTED(VERSION, "$VERSION", [Version number of package])])dnl
+ 
+ # Some tools Automake needs.
+ AC_REQUIRE([AM_SANITY_CHECK])dnl
+ AC_REQUIRE([AC_ARG_PROGRAM])dnl
+-AM_MISSING_PROG([ACLOCAL], [aclocal-${am__api_version}])
+-AM_MISSING_PROG([AUTOCONF], [autoconf])
+-AM_MISSING_PROG([AUTOMAKE], [automake-${am__api_version}])
+-AM_MISSING_PROG([AUTOHEADER], [autoheader])
+-AM_MISSING_PROG([MAKEINFO], [makeinfo])
++AM_MISSING_PROG(ACLOCAL, aclocal-${am__api_version})
++AM_MISSING_PROG(AUTOCONF, autoconf)
++AM_MISSING_PROG(AUTOMAKE, automake-${am__api_version})
++AM_MISSING_PROG(AUTOHEADER, autoheader)
++AM_MISSING_PROG(MAKEINFO, makeinfo)
+ AC_REQUIRE([AM_PROG_INSTALL_SH])dnl
+ AC_REQUIRE([AM_PROG_INSTALL_STRIP])dnl
+-AC_REQUIRE([AC_PROG_MKDIR_P])dnl
+-# For better backward compatibility.  To be removed once Automake 1.9.x
+-# dies out for good.  For more background, see:
+-# <http://lists.gnu.org/archive/html/automake/2012-07/msg00001.html>
+-# <http://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
+-AC_SUBST([mkdir_p], ['$(MKDIR_P)'])
+-# We need awk for the "check" target (and possibly the TAP driver).  The
+-# system "awk" is bad on some platforms.
++AC_REQUIRE([AM_PROG_MKDIR_P])dnl
++# We need awk for the "check" target.  The system "awk" is bad on
++# some platforms.
+ AC_REQUIRE([AC_PROG_AWK])dnl
+ AC_REQUIRE([AC_PROG_MAKE_SET])dnl
+ AC_REQUIRE([AM_SET_LEADING_DOT])dnl
+@@ -508,82 +506,34 @@ _AM_IF_OPTION([tar-ustar], [_AM_PROG_TAR([ustar])],
+ 			     [_AM_PROG_TAR([v7])])])
+ _AM_IF_OPTION([no-dependencies],,
+ [AC_PROVIDE_IFELSE([AC_PROG_CC],
+-		  [_AM_DEPENDENCIES([CC])],
+-		  [m4_define([AC_PROG_CC],
+-			     m4_defn([AC_PROG_CC])[_AM_DEPENDENCIES([CC])])])dnl
++		  [_AM_DEPENDENCIES(CC)],
++		  [define([AC_PROG_CC],
++			  defn([AC_PROG_CC])[_AM_DEPENDENCIES(CC)])])dnl
+ AC_PROVIDE_IFELSE([AC_PROG_CXX],
+-		  [_AM_DEPENDENCIES([CXX])],
+-		  [m4_define([AC_PROG_CXX],
+-			     m4_defn([AC_PROG_CXX])[_AM_DEPENDENCIES([CXX])])])dnl
++		  [_AM_DEPENDENCIES(CXX)],
++		  [define([AC_PROG_CXX],
++			  defn([AC_PROG_CXX])[_AM_DEPENDENCIES(CXX)])])dnl
+ AC_PROVIDE_IFELSE([AC_PROG_OBJC],
+-		  [_AM_DEPENDENCIES([OBJC])],
+-		  [m4_define([AC_PROG_OBJC],
+-			     m4_defn([AC_PROG_OBJC])[_AM_DEPENDENCIES([OBJC])])])dnl
+-AC_PROVIDE_IFELSE([AC_PROG_OBJCXX],
+-		  [_AM_DEPENDENCIES([OBJCXX])],
+-		  [m4_define([AC_PROG_OBJCXX],
+-			     m4_defn([AC_PROG_OBJCXX])[_AM_DEPENDENCIES([OBJCXX])])])dnl
++		  [_AM_DEPENDENCIES(OBJC)],
++		  [define([AC_PROG_OBJC],
++			  defn([AC_PROG_OBJC])[_AM_DEPENDENCIES(OBJC)])])dnl
+ ])
+-AC_REQUIRE([AM_SILENT_RULES])dnl
+-dnl The testsuite driver may need to know about EXEEXT, so add the
+-dnl 'am__EXEEXT' conditional if _AM_COMPILER_EXEEXT was seen.  This
+-dnl macro is hooked onto _AC_COMPILER_EXEEXT early, see below.
++_AM_IF_OPTION([silent-rules], [AC_REQUIRE([AM_SILENT_RULES])])dnl
++dnl The `parallel-tests' driver may need to know about EXEEXT, so add the
++dnl `am__EXEEXT' conditional if _AM_COMPILER_EXEEXT was seen.  This macro
++dnl is hooked onto _AC_COMPILER_EXEEXT early, see below.
+ AC_CONFIG_COMMANDS_PRE(dnl
+ [m4_provide_if([_AM_COMPILER_EXEEXT],
+   [AM_CONDITIONAL([am__EXEEXT], [test -n "$EXEEXT"])])])dnl
+-
+-# POSIX will say in a future version that running "rm -f" with no argument
+-# is OK; and we want to be able to make that assumption in our Makefile
+-# recipes.  So use an aggressive probe to check that the usage we want is
+-# actually supported "in the wild" to an acceptable degree.
+-# See automake bug#10828.
+-# To make any issue more visible, cause the running configure to be aborted
+-# by default if the 'rm' program in use doesn't match our expectations; the
+-# user can still override this though.
+-if rm -f && rm -fr && rm -rf; then : OK; else
+-  cat >&2 <<'END'
+-Oops!
+-
+-Your 'rm' program seems unable to run without file operands specified
+-on the command line, even when the '-f' option is present.  This is contrary
+-to the behaviour of most rm programs out there, and not conforming with
+-the upcoming POSIX standard: <http://austingroupbugs.net/view.php?id=542>
+-
+-Please tell bug-automake@gnu.org about your system, including the value
+-of your $PATH and any error possibly output before this message.  This
+-can help us improve future automake versions.
+-
+-END
+-  if test x"$ACCEPT_INFERIOR_RM_PROGRAM" = x"yes"; then
+-    echo 'Configuration will proceed anyway, since you have set the' >&2
+-    echo 'ACCEPT_INFERIOR_RM_PROGRAM variable to "yes"' >&2
+-    echo >&2
+-  else
+-    cat >&2 <<'END'
+-Aborting the configuration process, to ensure you take notice of the issue.
+-
+-You can download and install GNU coreutils to get an 'rm' implementation
+-that behaves properly: <http://www.gnu.org/software/coreutils/>.
+-
+-If you want to complete the configuration process using your problematic
+-'rm' anyway, export the environment variable ACCEPT_INFERIOR_RM_PROGRAM
+-to "yes", and re-run configure.
+-
+-END
+-    AC_MSG_ERROR([Your 'rm' program is bad, sorry.])
+-  fi
+-fi
+-dnl The trailing newline in this macro's definition is deliberate, for
+-dnl backward compatibility and to allow trailing 'dnl'-style comments
+-dnl after the AM_INIT_AUTOMAKE invocation. See automake bug#16841.
+ ])
+ 
+-dnl Hook into '_AC_COMPILER_EXEEXT' early to learn its expansion.  Do not
++dnl Hook into `_AC_COMPILER_EXEEXT' early to learn its expansion.  Do not
+ dnl add the conditional right here, as _AC_COMPILER_EXEEXT may be further
+ dnl mangled by Autoconf and run in a shell conditional statement.
+ m4_define([_AC_COMPILER_EXEEXT],
+ m4_defn([_AC_COMPILER_EXEEXT])[m4_provide([_AM_COMPILER_EXEEXT])])
+ 
++
+ # When config.status generates a header, we must update the stamp-h file.
+ # This file resides in the same directory as the config header
+ # that is generated.  The stamp files are numbered to have different names.
+@@ -605,18 +555,21 @@ for _am_header in $config_headers :; do
+ done
+ echo "timestamp for $_am_arg" >`AS_DIRNAME(["$_am_arg"])`/stamp-h[]$_am_stamp_count])
+ 
+-# Copyright (C) 2001-2017 Free Software Foundation, Inc.
++# Copyright (C) 2001, 2003, 2005, 2008, 2011 Free Software Foundation,
++# Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 1
++
+ # AM_PROG_INSTALL_SH
+ # ------------------
+ # Define $install_sh.
+ AC_DEFUN([AM_PROG_INSTALL_SH],
+ [AC_REQUIRE([AM_AUX_DIR_EXPAND])dnl
+-if test x"${install_sh+set}" != xset; then
++if test x"${install_sh}" != xset; then
+   case $am_aux_dir in
+   *\ * | *\	*)
+     install_sh="\${SHELL} '$am_aux_dir/install-sh'" ;;
+@@ -624,14 +577,16 @@ if test x"${install_sh+set}" != xset; then
+     install_sh="\${SHELL} $am_aux_dir/install-sh"
+   esac
+ fi
+-AC_SUBST([install_sh])])
++AC_SUBST(install_sh)])
+ 
+-# Copyright (C) 2003-2017 Free Software Foundation, Inc.
++# Copyright (C) 2003, 2005  Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 2
++
+ # Check whether the underlying file-system supports filenames
+ # with a leading dot.  For instance MS-DOS doesn't.
+ AC_DEFUN([AM_SET_LEADING_DOT],
+@@ -648,17 +603,20 @@ AC_SUBST([am__leading_dot])])
+ # Add --enable-maintainer-mode option to configure.         -*- Autoconf -*-
+ # From Jim Meyering
+ 
+-# Copyright (C) 1996-2017 Free Software Foundation, Inc.
++# Copyright (C) 1996, 1998, 2000, 2001, 2002, 2003, 2004, 2005, 2008,
++# 2011 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 5
++
+ # AM_MAINTAINER_MODE([DEFAULT-MODE])
+ # ----------------------------------
+ # Control maintainer-specific portions of Makefiles.
+-# Default is to disable them, unless 'enable' is passed literally.
+-# For symmetry, 'disable' may be passed as well.  Anyway, the user
++# Default is to disable them, unless `enable' is passed literally.
++# For symmetry, `disable' may be passed as well.  Anyway, the user
+ # can override the default with the --enable/--disable switch.
+ AC_DEFUN([AM_MAINTAINER_MODE],
+ [m4_case(m4_default([$1], [disable]),
+@@ -669,11 +627,10 @@ AC_DEFUN([AM_MAINTAINER_MODE],
+ AC_MSG_CHECKING([whether to enable maintainer-specific portions of Makefiles])
+   dnl maintainer-mode's default is 'disable' unless 'enable' is passed
+   AC_ARG_ENABLE([maintainer-mode],
+-    [AS_HELP_STRING([--]am_maintainer_other[-maintainer-mode],
+-      am_maintainer_other[ make rules and dependencies not useful
+-      (and sometimes confusing) to the casual installer])],
+-    [USE_MAINTAINER_MODE=$enableval],
+-    [USE_MAINTAINER_MODE=]m4_if(am_maintainer_other, [enable], [no], [yes]))
++[  --][am_maintainer_other][-maintainer-mode  am_maintainer_other make rules and dependencies not useful
++			  (and sometimes confusing) to the casual installer],
++      [USE_MAINTAINER_MODE=$enableval],
++      [USE_MAINTAINER_MODE=]m4_if(am_maintainer_other, [enable], [no], [yes]))
+   AC_MSG_RESULT([$USE_MAINTAINER_MODE])
+   AM_CONDITIONAL([MAINTAINER_MODE], [test $USE_MAINTAINER_MODE = yes])
+   MAINT=$MAINTAINER_MODE_TRUE
+@@ -681,14 +638,18 @@ AC_MSG_CHECKING([whether to enable maintainer-specific portions of Makefiles])
+ ]
+ )
+ 
++AU_DEFUN([jm_MAINTAINER_MODE], [AM_MAINTAINER_MODE])
++
+ # Check to see how 'make' treats includes.	            -*- Autoconf -*-
+ 
+-# Copyright (C) 2001-2017 Free Software Foundation, Inc.
++# Copyright (C) 2001, 2002, 2003, 2005, 2009  Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 4
++
+ # AM_MAKE_INCLUDE()
+ # -----------------
+ # Check to see how make treats includes.
+@@ -706,7 +667,7 @@ am__quote=
+ _am_result=none
+ # First try GNU make style include.
+ echo "include confinc" > confmf
+-# Ignore all kinds of additional output from 'make'.
++# Ignore all kinds of additional output from `make'.
+ case `$am_make -s -f confmf 2> /dev/null` in #(
+ *the\ am__doit\ target*)
+   am__include=include
+@@ -733,12 +694,15 @@ rm -f confinc confmf
+ 
+ # Fake the existence of programs that GNU maintainers use.  -*- Autoconf -*-
+ 
+-# Copyright (C) 1997-2017 Free Software Foundation, Inc.
++# Copyright (C) 1997, 1999, 2000, 2001, 2003, 2004, 2005, 2008
++# Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 6
++
+ # AM_MISSING_PROG(NAME, PROGRAM)
+ # ------------------------------
+ AC_DEFUN([AM_MISSING_PROG],
+@@ -746,10 +710,11 @@ AC_DEFUN([AM_MISSING_PROG],
+ $1=${$1-"${am_missing_run}$2"}
+ AC_SUBST($1)])
+ 
++
+ # AM_MISSING_HAS_RUN
+ # ------------------
+-# Define MISSING if not defined so far and test if it is modern enough.
+-# If it is, set am_missing_run to use it, otherwise, to nothing.
++# Define MISSING if not defined so far and test if it supports --run.
++# If it does, set am_missing_run to use it, otherwise, to nothing.
+ AC_DEFUN([AM_MISSING_HAS_RUN],
+ [AC_REQUIRE([AM_AUX_DIR_EXPAND])dnl
+ AC_REQUIRE_AUX_FILE([missing])dnl
+@@ -762,22 +727,54 @@ if test x"${MISSING+set}" != xset; then
+   esac
+ fi
+ # Use eval to expand $SHELL
+-if eval "$MISSING --is-lightweight"; then
+-  am_missing_run="$MISSING "
++if eval "$MISSING --run true"; then
++  am_missing_run="$MISSING --run "
+ else
+   am_missing_run=
+-  AC_MSG_WARN(['missing' script is too old or missing])
++  AC_MSG_WARN([`missing' script is too old or missing])
+ fi
+ ])
+ 
++# Copyright (C) 2003, 2004, 2005, 2006, 2011 Free Software Foundation,
++# Inc.
++#
++# This file is free software; the Free Software Foundation
++# gives unlimited permission to copy and/or distribute it,
++# with or without modifications, as long as this notice is preserved.
++
++# serial 1
++
++# AM_PROG_MKDIR_P
++# ---------------
++# Check for `mkdir -p'.
++AC_DEFUN([AM_PROG_MKDIR_P],
++[AC_PREREQ([2.60])dnl
++AC_REQUIRE([AC_PROG_MKDIR_P])dnl
++dnl Automake 1.8 to 1.9.6 used to define mkdir_p.  We now use MKDIR_P,
++dnl while keeping a definition of mkdir_p for backward compatibility.
++dnl @MKDIR_P@ is magic: AC_OUTPUT adjusts its value for each Makefile.
++dnl However we cannot define mkdir_p as $(MKDIR_P) for the sake of
++dnl Makefile.ins that do not define MKDIR_P, so we do our own
++dnl adjustment using top_builddir (which is defined more often than
++dnl MKDIR_P).
++AC_SUBST([mkdir_p], ["$MKDIR_P"])dnl
++case $mkdir_p in
++  [[\\/$]]* | ?:[[\\/]]*) ;;
++  */*) mkdir_p="\$(top_builddir)/$mkdir_p" ;;
++esac
++])
++
+ # Helper functions for option handling.                     -*- Autoconf -*-
+ 
+-# Copyright (C) 2001-2017 Free Software Foundation, Inc.
++# Copyright (C) 2001, 2002, 2003, 2005, 2008, 2010 Free Software
++# Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 5
++
+ # _AM_MANGLE_OPTION(NAME)
+ # -----------------------
+ AC_DEFUN([_AM_MANGLE_OPTION],
+@@ -787,7 +784,7 @@ AC_DEFUN([_AM_MANGLE_OPTION],
+ # --------------------
+ # Set option NAME.  Presently that only means defining a flag for this option.
+ AC_DEFUN([_AM_SET_OPTION],
+-[m4_define(_AM_MANGLE_OPTION([$1]), [1])])
++[m4_define(_AM_MANGLE_OPTION([$1]), 1)])
+ 
+ # _AM_SET_OPTIONS(OPTIONS)
+ # ------------------------
+@@ -803,16 +800,22 @@ AC_DEFUN([_AM_IF_OPTION],
+ 
+ # Check to make sure that the build environment is sane.    -*- Autoconf -*-
+ 
+-# Copyright (C) 1996-2017 Free Software Foundation, Inc.
++# Copyright (C) 1996, 1997, 2000, 2001, 2003, 2005, 2008
++# Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 5
++
+ # AM_SANITY_CHECK
+ # ---------------
+ AC_DEFUN([AM_SANITY_CHECK],
+ [AC_MSG_CHECKING([whether build environment is sane])
++# Just in case
++sleep 1
++echo timestamp > conftest.file
+ # Reject unsafe characters in $srcdir or the absolute working directory
+ # name.  Accept space and tab only in the latter.
+ am_lf='
+@@ -823,40 +826,32 @@ case `pwd` in
+ esac
+ case $srcdir in
+   *[[\\\"\#\$\&\'\`$am_lf\ \	]]*)
+-    AC_MSG_ERROR([unsafe srcdir value: '$srcdir']);;
++    AC_MSG_ERROR([unsafe srcdir value: `$srcdir']);;
+ esac
+ 
+-# Do 'set' in a subshell so we don't clobber the current shell's
++# Do `set' in a subshell so we don't clobber the current shell's
+ # arguments.  Must try -L first in case configure is actually a
+ # symlink; some systems play weird games with the mod time of symlinks
+ # (eg FreeBSD returns the mod time of the symlink's containing
+ # directory).
+ if (
+-   am_has_slept=no
+-   for am_try in 1 2; do
+-     echo "timestamp, slept: $am_has_slept" > conftest.file
+-     set X `ls -Lt "$srcdir/configure" conftest.file 2> /dev/null`
+-     if test "$[*]" = "X"; then
+-	# -L didn't work.
+-	set X `ls -t "$srcdir/configure" conftest.file`
+-     fi
+-     if test "$[*]" != "X $srcdir/configure conftest.file" \
+-	&& test "$[*]" != "X conftest.file $srcdir/configure"; then
+-
+-	# If neither matched, then we have a broken ls.  This can happen
+-	# if, for instance, CONFIG_SHELL is bash and it inherits a
+-	# broken ls alias from the environment.  This has actually
+-	# happened.  Such a system could not be considered "sane".
+-	AC_MSG_ERROR([ls -t appears to fail.  Make sure there is not a broken
+-  alias in your environment])
+-     fi
+-     if test "$[2]" = conftest.file || test $am_try -eq 2; then
+-       break
+-     fi
+-     # Just in case.
+-     sleep 1
+-     am_has_slept=yes
+-   done
++   set X `ls -Lt "$srcdir/configure" conftest.file 2> /dev/null`
++   if test "$[*]" = "X"; then
++      # -L didn't work.
++      set X `ls -t "$srcdir/configure" conftest.file`
++   fi
++   rm -f conftest.file
++   if test "$[*]" != "X $srcdir/configure conftest.file" \
++      && test "$[*]" != "X conftest.file $srcdir/configure"; then
++
++      # If neither matched, then we have a broken ls.  This can happen
++      # if, for instance, CONFIG_SHELL is bash and it inherits a
++      # broken ls alias from the environment.  This has actually
++      # happened.  Such a system could not be considered "sane".
++      AC_MSG_ERROR([ls -t appears to fail.  Make sure there is not a broken
++alias in your environment])
++   fi
++
+    test "$[2]" = conftest.file
+    )
+ then
+@@ -866,118 +861,46 @@ else
+    AC_MSG_ERROR([newly created file is older than distributed files!
+ Check your system clock])
+ fi
+-AC_MSG_RESULT([yes])
+-# If we didn't sleep, we still need to ensure time stamps of config.status and
+-# generated files are strictly newer.
+-am_sleep_pid=
+-if grep 'slept: no' conftest.file >/dev/null 2>&1; then
+-  ( sleep 1 ) &
+-  am_sleep_pid=$!
+-fi
+-AC_CONFIG_COMMANDS_PRE(
+-  [AC_MSG_CHECKING([that generated files are newer than configure])
+-   if test -n "$am_sleep_pid"; then
+-     # Hide warnings about reused PIDs.
+-     wait $am_sleep_pid 2>/dev/null
+-   fi
+-   AC_MSG_RESULT([done])])
+-rm -f conftest.file
+-])
++AC_MSG_RESULT(yes)])
+ 
+-# Copyright (C) 2009-2017 Free Software Foundation, Inc.
++# Copyright (C) 2001, 2003, 2005, 2011 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
+-# AM_SILENT_RULES([DEFAULT])
+-# --------------------------
+-# Enable less verbose build rules; with the default set to DEFAULT
+-# ("yes" being less verbose, "no" or empty being verbose).
+-AC_DEFUN([AM_SILENT_RULES],
+-[AC_ARG_ENABLE([silent-rules], [dnl
+-AS_HELP_STRING(
+-  [--enable-silent-rules],
+-  [less verbose build output (undo: "make V=1")])
+-AS_HELP_STRING(
+-  [--disable-silent-rules],
+-  [verbose build output (undo: "make V=0")])dnl
+-])
+-case $enable_silent_rules in @%:@ (((
+-  yes) AM_DEFAULT_VERBOSITY=0;;
+-   no) AM_DEFAULT_VERBOSITY=1;;
+-    *) AM_DEFAULT_VERBOSITY=m4_if([$1], [yes], [0], [1]);;
+-esac
+-dnl
+-dnl A few 'make' implementations (e.g., NonStop OS and NextStep)
+-dnl do not support nested variable expansions.
+-dnl See automake bug#9928 and bug#10237.
+-am_make=${MAKE-make}
+-AC_CACHE_CHECK([whether $am_make supports nested variables],
+-   [am_cv_make_support_nested_variables],
+-   [if AS_ECHO([['TRUE=$(BAR$(V))
+-BAR0=false
+-BAR1=true
+-V=1
+-am__doit:
+-	@$(TRUE)
+-.PHONY: am__doit']]) | $am_make -f - >/dev/null 2>&1; then
+-  am_cv_make_support_nested_variables=yes
+-else
+-  am_cv_make_support_nested_variables=no
+-fi])
+-if test $am_cv_make_support_nested_variables = yes; then
+-  dnl Using '$V' instead of '$(V)' breaks IRIX make.
+-  AM_V='$(V)'
+-  AM_DEFAULT_V='$(AM_DEFAULT_VERBOSITY)'
+-else
+-  AM_V=$AM_DEFAULT_VERBOSITY
+-  AM_DEFAULT_V=$AM_DEFAULT_VERBOSITY
+-fi
+-AC_SUBST([AM_V])dnl
+-AM_SUBST_NOTMAKE([AM_V])dnl
+-AC_SUBST([AM_DEFAULT_V])dnl
+-AM_SUBST_NOTMAKE([AM_DEFAULT_V])dnl
+-AC_SUBST([AM_DEFAULT_VERBOSITY])dnl
+-AM_BACKSLASH='\'
+-AC_SUBST([AM_BACKSLASH])dnl
+-_AM_SUBST_NOTMAKE([AM_BACKSLASH])dnl
+-])
+-
+-# Copyright (C) 2001-2017 Free Software Foundation, Inc.
+-#
+-# This file is free software; the Free Software Foundation
+-# gives unlimited permission to copy and/or distribute it,
+-# with or without modifications, as long as this notice is preserved.
++# serial 1
+ 
+ # AM_PROG_INSTALL_STRIP
+ # ---------------------
+-# One issue with vendor 'install' (even GNU) is that you can't
++# One issue with vendor `install' (even GNU) is that you can't
+ # specify the program used to strip binaries.  This is especially
+ # annoying in cross-compiling environments, where the build's strip
+ # is unlikely to handle the host's binaries.
+ # Fortunately install-sh will honor a STRIPPROG variable, so we
+-# always use install-sh in "make install-strip", and initialize
++# always use install-sh in `make install-strip', and initialize
+ # STRIPPROG with the value of the STRIP variable (set by the user).
+ AC_DEFUN([AM_PROG_INSTALL_STRIP],
+ [AC_REQUIRE([AM_PROG_INSTALL_SH])dnl
+-# Installed binaries are usually stripped using 'strip' when the user
+-# run "make install-strip".  However 'strip' might not be the right
++# Installed binaries are usually stripped using `strip' when the user
++# run `make install-strip'.  However `strip' might not be the right
+ # tool to use in cross-compilation environments, therefore Automake
+-# will honor the 'STRIP' environment variable to overrule this program.
+-dnl Don't test for $cross_compiling = yes, because it might be 'maybe'.
++# will honor the `STRIP' environment variable to overrule this program.
++dnl Don't test for $cross_compiling = yes, because it might be `maybe'.
+ if test "$cross_compiling" != no; then
+   AC_CHECK_TOOL([STRIP], [strip], :)
+ fi
+ INSTALL_STRIP_PROGRAM="\$(install_sh) -c -s"
+ AC_SUBST([INSTALL_STRIP_PROGRAM])])
+ 
+-# Copyright (C) 2006-2017 Free Software Foundation, Inc.
++# Copyright (C) 2006, 2008, 2010 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 3
++
+ # _AM_SUBST_NOTMAKE(VARIABLE)
+ # ---------------------------
+ # Prevent Automake from outputting VARIABLE = @VARIABLE@ in Makefile.in.
+@@ -991,16 +914,18 @@ AC_DEFUN([AM_SUBST_NOTMAKE], [_AM_SUBST_NOTMAKE($@)])
+ 
+ # Check how to create a tarball.                            -*- Autoconf -*-
+ 
+-# Copyright (C) 2004-2017 Free Software Foundation, Inc.
++# Copyright (C) 2004, 2005, 2012 Free Software Foundation, Inc.
+ #
+ # This file is free software; the Free Software Foundation
+ # gives unlimited permission to copy and/or distribute it,
+ # with or without modifications, as long as this notice is preserved.
+ 
++# serial 2
++
+ # _AM_PROG_TAR(FORMAT)
+ # --------------------
+ # Check how to create a tarball in format FORMAT.
+-# FORMAT should be one of 'v7', 'ustar', or 'pax'.
++# FORMAT should be one of `v7', `ustar', or `pax'.
+ #
+ # Substitute a variable $(am__tar) that is a command
+ # writing to stdout a FORMAT-tarball containing the directory
+@@ -1010,114 +935,76 @@ AC_DEFUN([AM_SUBST_NOTMAKE], [_AM_SUBST_NOTMAKE($@)])
+ # Substitute a variable $(am__untar) that extract such
+ # a tarball read from stdin.
+ #     $(am__untar) < result.tar
+-#
+ AC_DEFUN([_AM_PROG_TAR],
+ [# Always define AMTAR for backward compatibility.  Yes, it's still used
+ # in the wild :-(  We should find a proper way to deprecate it ...
+ AC_SUBST([AMTAR], ['$${TAR-tar}'])
+-
+-# We'll loop over all known methods to create a tar archive until one works.
++m4_if([$1], [v7],
++     [am__tar='$${TAR-tar} chof - "$$tardir"' am__untar='$${TAR-tar} xf -'],
++     [m4_case([$1], [ustar],, [pax],,
++              [m4_fatal([Unknown tar format])])
++AC_MSG_CHECKING([how to create a $1 tar archive])
++# Loop over all known methods to create a tar archive until one works.
+ _am_tools='gnutar m4_if([$1], [ustar], [plaintar]) pax cpio none'
++_am_tools=${am_cv_prog_tar_$1-$_am_tools}
++# Do not fold the above two line into one, because Tru64 sh and
++# Solaris sh will not grok spaces in the rhs of `-'.
++for _am_tool in $_am_tools
++do
++  case $_am_tool in
++  gnutar)
++    for _am_tar in tar gnutar gtar;
++    do
++      AM_RUN_LOG([$_am_tar --version]) && break
++    done
++    am__tar="$_am_tar --format=m4_if([$1], [pax], [posix], [$1]) -chf - "'"$$tardir"'
++    am__tar_="$_am_tar --format=m4_if([$1], [pax], [posix], [$1]) -chf - "'"$tardir"'
++    am__untar="$_am_tar -xf -"
++    ;;
++  plaintar)
++    # Must skip GNU tar: if it does not support --format= it doesn't create
++    # ustar tarball either.
++    (tar --version) >/dev/null 2>&1 && continue
++    am__tar='tar chf - "$$tardir"'
++    am__tar_='tar chf - "$tardir"'
++    am__untar='tar xf -'
++    ;;
++  pax)
++    am__tar='pax -L -x $1 -w "$$tardir"'
++    am__tar_='pax -L -x $1 -w "$tardir"'
++    am__untar='pax -r'
++    ;;
++  cpio)
++    am__tar='find "$$tardir" -print | cpio -o -H $1 -L'
++    am__tar_='find "$tardir" -print | cpio -o -H $1 -L'
++    am__untar='cpio -i -H $1 -d'
++    ;;
++  none)
++    am__tar=false
++    am__tar_=false
++    am__untar=false
++    ;;
++  esac
+ 
+-m4_if([$1], [v7],
+-  [am__tar='$${TAR-tar} chof - "$$tardir"' am__untar='$${TAR-tar} xf -'],
+-
+-  [m4_case([$1],
+-    [ustar],
+-     [# The POSIX 1988 'ustar' format is defined with fixed-size fields.
+-      # There is notably a 21 bits limit for the UID and the GID.  In fact,
+-      # the 'pax' utility can hang on bigger UID/GID (see automake bug#8343
+-      # and bug#13588).
+-      am_max_uid=2097151 # 2^21 - 1
+-      am_max_gid=$am_max_uid
+-      # The $UID and $GID variables are not portable, so we need to resort
+-      # to the POSIX-mandated id(1) utility.  Errors in the 'id' calls
+-      # below are definitely unexpected, so allow the users to see them
+-      # (that is, avoid stderr redirection).
+-      am_uid=`id -u || echo unknown`
+-      am_gid=`id -g || echo unknown`
+-      AC_MSG_CHECKING([whether UID '$am_uid' is supported by ustar format])
+-      if test $am_uid -le $am_max_uid; then
+-         AC_MSG_RESULT([yes])
+-      else
+-         AC_MSG_RESULT([no])
+-         _am_tools=none
+-      fi
+-      AC_MSG_CHECKING([whether GID '$am_gid' is supported by ustar format])
+-      if test $am_gid -le $am_max_gid; then
+-         AC_MSG_RESULT([yes])
+-      else
+-        AC_MSG_RESULT([no])
+-        _am_tools=none
+-      fi],
+-
+-  [pax],
+-    [],
+-
+-  [m4_fatal([Unknown tar format])])
+-
+-  AC_MSG_CHECKING([how to create a $1 tar archive])
+-
+-  # Go ahead even if we have the value already cached.  We do so because we
+-  # need to set the values for the 'am__tar' and 'am__untar' variables.
+-  _am_tools=${am_cv_prog_tar_$1-$_am_tools}
+-
+-  for _am_tool in $_am_tools; do
+-    case $_am_tool in
+-    gnutar)
+-      for _am_tar in tar gnutar gtar; do
+-        AM_RUN_LOG([$_am_tar --version]) && break
+-      done
+-      am__tar="$_am_tar --format=m4_if([$1], [pax], [posix], [$1]) -chf - "'"$$tardir"'
+-      am__tar_="$_am_tar --format=m4_if([$1], [pax], [posix], [$1]) -chf - "'"$tardir"'
+-      am__untar="$_am_tar -xf -"
+-      ;;
+-    plaintar)
+-      # Must skip GNU tar: if it does not support --format= it doesn't create
+-      # ustar tarball either.
+-      (tar --version) >/dev/null 2>&1 && continue
+-      am__tar='tar chf - "$$tardir"'
+-      am__tar_='tar chf - "$tardir"'
+-      am__untar='tar xf -'
+-      ;;
+-    pax)
+-      am__tar='pax -L -x $1 -w "$$tardir"'
+-      am__tar_='pax -L -x $1 -w "$tardir"'
+-      am__untar='pax -r'
+-      ;;
+-    cpio)
+-      am__tar='find "$$tardir" -print | cpio -o -H $1 -L'
+-      am__tar_='find "$tardir" -print | cpio -o -H $1 -L'
+-      am__untar='cpio -i -H $1 -d'
+-      ;;
+-    none)
+-      am__tar=false
+-      am__tar_=false
+-      am__untar=false
+-      ;;
+-    esac
++  # If the value was cached, stop now.  We just wanted to have am__tar
++  # and am__untar set.
++  test -n "${am_cv_prog_tar_$1}" && break
+ 
+-    # If the value was cached, stop now.  We just wanted to have am__tar
+-    # and am__untar set.
+-    test -n "${am_cv_prog_tar_$1}" && break
+-
+-    # tar/untar a dummy directory, and stop if the command works.
+-    rm -rf conftest.dir
+-    mkdir conftest.dir
+-    echo GrepMe > conftest.dir/file
+-    AM_RUN_LOG([tardir=conftest.dir && eval $am__tar_ >conftest.tar])
+-    rm -rf conftest.dir
+-    if test -s conftest.tar; then
+-      AM_RUN_LOG([$am__untar <conftest.tar])
+-      AM_RUN_LOG([cat conftest.dir/file])
+-      grep GrepMe conftest.dir/file >/dev/null 2>&1 && break
+-    fi
+-  done
++  # tar/untar a dummy directory, and stop if the command works
+   rm -rf conftest.dir
++  mkdir conftest.dir
++  echo GrepMe > conftest.dir/file
++  AM_RUN_LOG([tardir=conftest.dir && eval $am__tar_ >conftest.tar])
++  rm -rf conftest.dir
++  if test -s conftest.tar; then
++    AM_RUN_LOG([$am__untar <conftest.tar])
++    grep GrepMe conftest.dir/file >/dev/null 2>&1 && break
++  fi
++done
++rm -rf conftest.dir
+ 
+-  AC_CACHE_VAL([am_cv_prog_tar_$1], [am_cv_prog_tar_$1=$_am_tool])
+-  AC_MSG_RESULT([$am_cv_prog_tar_$1])])
+-
++AC_CACHE_VAL([am_cv_prog_tar_$1], [am_cv_prog_tar_$1=$_am_tool])
++AC_MSG_RESULT([$am_cv_prog_tar_$1])])
+ AC_SUBST([am__tar])
+ AC_SUBST([am__untar])
+ ]) # _AM_PROG_TAR
+diff --git a/newlib/libc/sys/zephyr/configure b/newlib/libc/sys/zephyr/configure
+index bcc9f7d..cc50b4d 100755
+--- a/newlib/libc/sys/zephyr/configure
++++ b/newlib/libc/sys/zephyr/configure
+@@ -626,10 +626,6 @@ am__quote
+ am__include
+ DEPDIR
+ CC
+-AM_BACKSLASH
+-AM_DEFAULT_VERBOSITY
+-AM_DEFAULT_V
+-AM_V
+ am__untar
+ am__tar
+ AMTAR
+@@ -715,7 +711,6 @@ enable_newlib_elix_level
+ enable_newlib_io_float
+ enable_newlib_supplied_syscalls
+ enable_newlib_fno_builtin
+-enable_silent_rules
+ enable_dependency_tracking
+ enable_maintainer_mode
+ '
+@@ -1362,15 +1357,10 @@ Optional Features:
+   --disable-newlib-io-float disable printf/scanf family float support
+   --disable-newlib-supplied-syscalls disable newlib from supplying syscalls
+   --disable-newlib-fno-builtin disable -fno-builtin flag to allow compiler to use builtin library functions
+-  --enable-silent-rules   less verbose build output (undo: "make V=1")
+-  --disable-silent-rules  verbose build output (undo: "make V=0")
+-  --enable-dependency-tracking
+-                          do not reject slow dependency extractors
+-  --disable-dependency-tracking
+-                          speeds up one-time build
+-  --enable-maintainer-mode
+-                          enable make rules and dependencies not useful (and
+-                          sometimes confusing) to the casual installer
++  --disable-dependency-tracking  speeds up one-time build
++  --enable-dependency-tracking   do not reject slow dependency extractors
++  --enable-maintainer-mode  enable make rules and dependencies not useful
++			  (and sometimes confusing) to the casual installer
+ 
+ Some influential environment variables:
+   CCAS        assembler compiler command (defaults to CC)
+@@ -1949,7 +1939,7 @@ IFS=$ac_save_IFS
+ case $host_os in *\ *) host_os=`echo "$host_os" | sed 's/ /-/g'`;; esac
+ 
+ 
+-am__api_version='1.15'
++am__api_version='1.11'
+ 
+ # Find a good install program.  We prefer a C program (faster),
+ # so one script is as good as another.  But avoid the broken or
+@@ -2046,6 +2036,9 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
+ 
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether build environment is sane" >&5
+ $as_echo_n "checking whether build environment is sane... " >&6; }
++# Just in case
++sleep 1
++echo timestamp > conftest.file
+ # Reject unsafe characters in $srcdir or the absolute working directory
+ # name.  Accept space and tab only in the latter.
+ am_lf='
+@@ -2056,40 +2049,32 @@ case `pwd` in
+ esac
+ case $srcdir in
+   *[\\\"\#\$\&\'\`$am_lf\ \	]*)
+-    as_fn_error $? "unsafe srcdir value: '$srcdir'" "$LINENO" 5;;
++    as_fn_error $? "unsafe srcdir value: \`$srcdir'" "$LINENO" 5;;
+ esac
+ 
+-# Do 'set' in a subshell so we don't clobber the current shell's
++# Do `set' in a subshell so we don't clobber the current shell's
+ # arguments.  Must try -L first in case configure is actually a
+ # symlink; some systems play weird games with the mod time of symlinks
+ # (eg FreeBSD returns the mod time of the symlink's containing
+ # directory).
+ if (
+-   am_has_slept=no
+-   for am_try in 1 2; do
+-     echo "timestamp, slept: $am_has_slept" > conftest.file
+-     set X `ls -Lt "$srcdir/configure" conftest.file 2> /dev/null`
+-     if test "$*" = "X"; then
+-	# -L didn't work.
+-	set X `ls -t "$srcdir/configure" conftest.file`
+-     fi
+-     if test "$*" != "X $srcdir/configure conftest.file" \
+-	&& test "$*" != "X conftest.file $srcdir/configure"; then
+-
+-	# If neither matched, then we have a broken ls.  This can happen
+-	# if, for instance, CONFIG_SHELL is bash and it inherits a
+-	# broken ls alias from the environment.  This has actually
+-	# happened.  Such a system could not be considered "sane".
+-	as_fn_error $? "ls -t appears to fail.  Make sure there is not a broken
+-  alias in your environment" "$LINENO" 5
+-     fi
+-     if test "$2" = conftest.file || test $am_try -eq 2; then
+-       break
+-     fi
+-     # Just in case.
+-     sleep 1
+-     am_has_slept=yes
+-   done
++   set X `ls -Lt "$srcdir/configure" conftest.file 2> /dev/null`
++   if test "$*" = "X"; then
++      # -L didn't work.
++      set X `ls -t "$srcdir/configure" conftest.file`
++   fi
++   rm -f conftest.file
++   if test "$*" != "X $srcdir/configure conftest.file" \
++      && test "$*" != "X conftest.file $srcdir/configure"; then
++
++      # If neither matched, then we have a broken ls.  This can happen
++      # if, for instance, CONFIG_SHELL is bash and it inherits a
++      # broken ls alias from the environment.  This has actually
++      # happened.  Such a system could not be considered "sane".
++      as_fn_error $? "ls -t appears to fail.  Make sure there is not a broken
++alias in your environment" "$LINENO" 5
++   fi
++
+    test "$2" = conftest.file
+    )
+ then
+@@ -2101,16 +2086,6 @@ Check your system clock" "$LINENO" 5
+ fi
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+ $as_echo "yes" >&6; }
+-# If we didn't sleep, we still need to ensure time stamps of config.status and
+-# generated files are strictly newer.
+-am_sleep_pid=
+-if grep 'slept: no' conftest.file >/dev/null 2>&1; then
+-  ( sleep 1 ) &
+-  am_sleep_pid=$!
+-fi
+-
+-rm -f conftest.file
+-
+ test "$program_prefix" != NONE &&
+   program_transform_name="s&^&$program_prefix&;$program_transform_name"
+ # Use a double $ so make ignores it.
+@@ -2121,8 +2096,8 @@ test "$program_suffix" != NONE &&
+ ac_script='s/[\\$]/&&/g;s/;s,x,x,$//'
+ program_transform_name=`$as_echo "$program_transform_name" | sed "$ac_script"`
+ 
+-# Expand $ac_aux_dir to an absolute path.
+-am_aux_dir=`cd "$ac_aux_dir" && pwd`
++# expand $ac_aux_dir to an absolute path
++am_aux_dir=`cd $ac_aux_dir && pwd`
+ 
+ if test x"${MISSING+set}" != xset; then
+   case $am_aux_dir in
+@@ -2133,15 +2108,15 @@ if test x"${MISSING+set}" != xset; then
+   esac
+ fi
+ # Use eval to expand $SHELL
+-if eval "$MISSING --is-lightweight"; then
+-  am_missing_run="$MISSING "
++if eval "$MISSING --run true"; then
++  am_missing_run="$MISSING --run "
+ else
+   am_missing_run=
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: 'missing' script is too old or missing" >&5
+-$as_echo "$as_me: WARNING: 'missing' script is too old or missing" >&2;}
++  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: \`missing' script is too old or missing" >&5
++$as_echo "$as_me: WARNING: \`missing' script is too old or missing" >&2;}
+ fi
+ 
+-if test x"${install_sh+set}" != xset; then
++if test x"${install_sh}" != xset; then
+   case $am_aux_dir in
+   *\ * | *\	*)
+     install_sh="\${SHELL} '$am_aux_dir/install-sh'" ;;
+@@ -2150,10 +2125,10 @@ if test x"${install_sh+set}" != xset; then
+   esac
+ fi
+ 
+-# Installed binaries are usually stripped using 'strip' when the user
+-# run "make install-strip".  However 'strip' might not be the right
++# Installed binaries are usually stripped using `strip' when the user
++# run `make install-strip'.  However `strip' might not be the right
+ # tool to use in cross-compilation environments, therefore Automake
+-# will honor the 'STRIP' environment variable to overrule this program.
++# will honor the `STRIP' environment variable to overrule this program.
+ if test "$cross_compiling" != no; then
+   if test -n "$ac_tool_prefix"; then
+   # Extract the first word of "${ac_tool_prefix}strip", so it can be a program name with args.
+@@ -2292,6 +2267,12 @@ fi
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $MKDIR_P" >&5
+ $as_echo "$MKDIR_P" >&6; }
+ 
++mkdir_p="$MKDIR_P"
++case $mkdir_p in
++  [\\/$]* | ?:[\\/]*) ;;
++  */*) mkdir_p="\$(top_builddir)/$mkdir_p" ;;
++esac
++
+ for ac_prog in gawk mawk nawk awk
+ do
+   # Extract the first word of "$ac_prog", so it can be a program name with args.
+@@ -2374,45 +2355,6 @@ else
+ fi
+ rmdir .tst 2>/dev/null
+ 
+-# Check whether --enable-silent-rules was given.
+-if test "${enable_silent_rules+set}" = set; then :
+-  enableval=$enable_silent_rules;
+-fi
+-
+-case $enable_silent_rules in # (((
+-  yes) AM_DEFAULT_VERBOSITY=0;;
+-   no) AM_DEFAULT_VERBOSITY=1;;
+-    *) AM_DEFAULT_VERBOSITY=1;;
+-esac
+-am_make=${MAKE-make}
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $am_make supports nested variables" >&5
+-$as_echo_n "checking whether $am_make supports nested variables... " >&6; }
+-if ${am_cv_make_support_nested_variables+:} false; then :
+-  $as_echo_n "(cached) " >&6
+-else
+-  if $as_echo 'TRUE=$(BAR$(V))
+-BAR0=false
+-BAR1=true
+-V=1
+-am__doit:
+-	@$(TRUE)
+-.PHONY: am__doit' | $am_make -f - >/dev/null 2>&1; then
+-  am_cv_make_support_nested_variables=yes
+-else
+-  am_cv_make_support_nested_variables=no
+-fi
+-fi
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $am_cv_make_support_nested_variables" >&5
+-$as_echo "$am_cv_make_support_nested_variables" >&6; }
+-if test $am_cv_make_support_nested_variables = yes; then
+-    AM_V='$(V)'
+-  AM_DEFAULT_V='$(AM_DEFAULT_VERBOSITY)'
+-else
+-  AM_V=$AM_DEFAULT_VERBOSITY
+-  AM_DEFAULT_V=$AM_DEFAULT_VERBOSITY
+-fi
+-AM_BACKSLASH='\'
+-
+ DEPDIR="${am__leading_dot}deps"
+ 
+ ac_config_commands="$ac_config_commands depfiles"
+@@ -2432,7 +2374,7 @@ am__quote=
+ _am_result=none
+ # First try GNU make style include.
+ echo "include confinc" > confmf
+-# Ignore all kinds of additional output from 'make'.
++# Ignore all kinds of additional output from `make'.
+ case `$am_make -s -f confmf 2> /dev/null` in #(
+ *the\ am__doit\ target*)
+   am__include=include
+@@ -2648,22 +2590,12 @@ AUTOHEADER=${AUTOHEADER-"${am_missing_run}autoheader"}
+ 
+ MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
+ 
+-# For better backward compatibility.  To be removed once Automake 1.9.x
+-# dies out for good.  For more background, see:
+-# <http://lists.gnu.org/archive/html/automake/2012-07/msg00001.html>
+-# <http://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
+-mkdir_p='$(MKDIR_P)'
+-
+-# We need awk for the "check" target (and possibly the TAP driver).  The
+-# system "awk" is bad on some platforms.
++# We need awk for the "check" target.  The system "awk" is bad on
++# some platforms.
+ # Always define AMTAR for backward compatibility.  Yes, it's still used
+ # in the wild :-(  We should find a proper way to deprecate it ...
+ AMTAR='$${TAR-tar}'
+ 
+-
+-# We'll loop over all known methods to create a tar archive until one works.
+-_am_tools='gnutar  pax cpio none'
+-
+ am__tar='$${TAR-tar} chof - "$$tardir"' am__untar='$${TAR-tar} xf -'
+ 
+ 
+@@ -2671,49 +2603,6 @@ am__tar='$${TAR-tar} chof - "$$tardir"' am__untar='$${TAR-tar} xf -'
+ 
+ 
+ 
+-# POSIX will say in a future version that running "rm -f" with no argument
+-# is OK; and we want to be able to make that assumption in our Makefile
+-# recipes.  So use an aggressive probe to check that the usage we want is
+-# actually supported "in the wild" to an acceptable degree.
+-# See automake bug#10828.
+-# To make any issue more visible, cause the running configure to be aborted
+-# by default if the 'rm' program in use doesn't match our expectations; the
+-# user can still override this though.
+-if rm -f && rm -fr && rm -rf; then : OK; else
+-  cat >&2 <<'END'
+-Oops!
+-
+-Your 'rm' program seems unable to run without file operands specified
+-on the command line, even when the '-f' option is present.  This is contrary
+-to the behaviour of most rm programs out there, and not conforming with
+-the upcoming POSIX standard: <http://austingroupbugs.net/view.php?id=542>
+-
+-Please tell bug-automake@gnu.org about your system, including the value
+-of your $PATH and any error possibly output before this message.  This
+-can help us improve future automake versions.
+-
+-END
+-  if test x"$ACCEPT_INFERIOR_RM_PROGRAM" = x"yes"; then
+-    echo 'Configuration will proceed anyway, since you have set the' >&2
+-    echo 'ACCEPT_INFERIOR_RM_PROGRAM variable to "yes"' >&2
+-    echo >&2
+-  else
+-    cat >&2 <<'END'
+-Aborting the configuration process, to ensure you take notice of the issue.
+-
+-You can download and install GNU coreutils to get an 'rm' implementation
+-that behaves properly: <http://www.gnu.org/software/coreutils/>.
+-
+-If you want to complete the configuration process using your problematic
+-'rm' anyway, export the environment variable ACCEPT_INFERIOR_RM_PROGRAM
+-to "yes", and re-run configure.
+-
+-END
+-    as_fn_error $? "Your 'rm' program is bad, sorry." "$LINENO" 5
+-  fi
+-fi
+-
+-
+ # FIXME: We temporarily define our own version of AC_PROG_CC.  This is
+ # copied from autoconf 2.12, but does not call AC_PROG_CC_WORKS.  We
+ # are probably using a cross compiler, which will not be able to fully
+@@ -2775,8 +2664,8 @@ else
+   # We make a subdir and do the tests there.  Otherwise we can end up
+   # making bogus files that we don't know about and never remove.  For
+   # instance it was reported that on HP-UX the gcc test will end up
+-  # making a dummy file named 'D' -- because '-MD' means "put the output
+-  # in D".
++  # making a dummy file named `D' -- because `-MD' means `put the output
++  # in D'.
+   rm -rf conftest.dir
+   mkdir conftest.dir
+   # Copy depcomp to subdir because otherwise we won't find it if we're
+@@ -2811,16 +2700,16 @@ else
+     : > sub/conftest.c
+     for i in 1 2 3 4 5 6; do
+       echo '#include "conftst'$i'.h"' >> sub/conftest.c
+-      # Using ": > sub/conftst$i.h" creates only sub/conftst1.h with
+-      # Solaris 10 /bin/sh.
+-      echo '/* dummy */' > sub/conftst$i.h
++      # Using `: > sub/conftst$i.h' creates only sub/conftst1.h with
++      # Solaris 8's {/usr,}/bin/sh.
++      touch sub/conftst$i.h
+     done
+     echo "${am__include} ${am__quote}sub/conftest.Po${am__quote}" > confmf
+ 
+-    # We check with '-c' and '-o' for the sake of the "dashmstdout"
++    # We check with `-c' and `-o' for the sake of the "dashmstdout"
+     # mode.  It turns out that the SunPro C++ compiler does not properly
+-    # handle '-M -o', and we need to detect this.  Also, some Intel
+-    # versions had trouble with output in subdirs.
++    # handle `-M -o', and we need to detect this.  Also, some Intel
++    # versions had trouble with output in subdirs
+     am__obj=sub/conftest.${OBJEXT-o}
+     am__minus_obj="-o $am__obj"
+     case $depmode in
+@@ -2829,8 +2718,8 @@ else
+       test "$am__universal" = false || continue
+       ;;
+     nosideeffect)
+-      # After this tag, mechanisms are not by side-effect, so they'll
+-      # only be used when explicitly requested.
++      # after this tag, mechanisms are not by side-effect, so they'll
++      # only be used when explicitly requested
+       if test "x$enable_dependency_tracking" = xyes; then
+ 	continue
+       else
+@@ -2838,7 +2727,7 @@ else
+       fi
+       ;;
+     msvc7 | msvc7msys | msvisualcpp | msvcmsys)
+-      # This compiler won't grok '-c -o', but also, the minuso test has
++      # This compiler won't grok `-c -o', but also, the minuso test has
+       # not run yet.  These depmodes are late enough in the game, and
+       # so weak that their functioning should not be impacted.
+       am__obj=conftest.${OBJEXT-o}
+@@ -3720,14 +3609,6 @@ if test -z "${MAY_SUPPLY_SYSCALLS_TRUE}" && test -z "${MAY_SUPPLY_SYSCALLS_FALSE
+   as_fn_error $? "conditional \"MAY_SUPPLY_SYSCALLS\" was never defined.
+ Usually this means the macro was only invoked conditionally." "$LINENO" 5
+ fi
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking that generated files are newer than configure" >&5
+-$as_echo_n "checking that generated files are newer than configure... " >&6; }
+-   if test -n "$am_sleep_pid"; then
+-     # Hide warnings about reused PIDs.
+-     wait $am_sleep_pid 2>/dev/null
+-   fi
+-   { $as_echo "$as_me:${as_lineno-$LINENO}: result: done" >&5
+-$as_echo "done" >&6; }
+ 
+ if test -z "${AMDEP_TRUE}" && test -z "${AMDEP_FALSE}"; then
+   as_fn_error $? "conditional \"AMDEP\" was never defined.
+@@ -4769,7 +4650,7 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
+ 
+   case $ac_file$ac_mode in
+     "depfiles":C) test x"$AMDEP_TRUE" != x"" || {
+-  # Older Autoconf quotes --file arguments for eval, but not when files
++  # Autoconf 2.62 quotes --file arguments for eval, but not when files
+   # are listed without --file.  Let's play safe and only enable the eval
+   # if we detect the quoting.
+   case $CONFIG_FILES in
+@@ -4782,7 +4663,7 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
+     # Strip MF so we end up with the name of the file.
+     mf=`echo "$mf" | sed -e 's/:.*$//'`
+     # Check whether this is an Automake generated Makefile or not.
+-    # We used to match only the files named 'Makefile.in', but
++    # We used to match only the files named `Makefile.in', but
+     # some people rename them; so instead we look at the file content.
+     # Grep'ing the first line is not enough: some people post-process
+     # each Makefile.in and add a new line on top of each file to say so.
+@@ -4816,19 +4697,21 @@ $as_echo X"$mf" |
+       continue
+     fi
+     # Extract the definition of DEPDIR, am__include, and am__quote
+-    # from the Makefile without running 'make'.
++    # from the Makefile without running `make'.
+     DEPDIR=`sed -n 's/^DEPDIR = //p' < "$mf"`
+     test -z "$DEPDIR" && continue
+     am__include=`sed -n 's/^am__include = //p' < "$mf"`
+-    test -z "$am__include" && continue
++    test -z "am__include" && continue
+     am__quote=`sed -n 's/^am__quote = //p' < "$mf"`
++    # When using ansi2knr, U may be empty or an underscore; expand it
++    U=`sed -n 's/^U = //p' < "$mf"`
+     # Find all dependency output files, they are included files with
+     # $(DEPDIR) in their names.  We invoke sed twice because it is the
+     # simplest approach to changing $(DEPDIR) to its actual value in the
+     # expansion.
+     for file in `sed -n "
+       s/^$am__include $am__quote\(.*(DEPDIR).*\)$am__quote"'$/\1/p' <"$mf" | \
+-	 sed -e 's/\$(DEPDIR)/'"$DEPDIR"'/g'`; do
++	 sed -e 's/\$(DEPDIR)/'"$DEPDIR"'/g' -e 's/\$U/'"$U"'/g'`; do
+       # Make sure the directory exists.
+       test -f "$dirpart/$file" && continue
+       fdir=`$as_dirname -- "$file" ||
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index ce22bfd..446085c 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -30,8 +30,8 @@
+  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
+-#ifndef _SYS_LOCK_H_
+-#define _SYS_LOCK_H_
++#ifndef __SYS_LOCK_H__
++#define __SYS_LOCK_H__
+ 
+ typedef struct {
+     void *dummy[8];
+@@ -47,7 +47,6 @@ typedef struct {
+ 
+ 
+ 
+-
+ /* Newlib lock structs */
+ typedef struct z_gthread_mutex_t            _LOCK_T;
+ typedef struct z_gthread_recursive_mutex_t  _LOCK_RECURSIVE_T;
+@@ -74,4 +73,4 @@ typedef struct z_gthread_recursive_mutex_t  _LOCK_RECURSIVE_T;
+ 
+ 
+ 
+-#endif /* !_SYS_LOCK_H_ */
++#endif /* !__SYS_LOCK_H__ */
+-- 
+2.17.1
+
+
+From b6b247a87039101a243190651b9a277bfe35336a Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sat, 18 Jan 2020 16:10:36 +0100
+Subject: [PATCH 03/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 446085c..854fb75 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -29,7 +29,7 @@
+  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+-
++#pragma GCC error "lock included"
+ #ifndef __SYS_LOCK_H__
+ #define __SYS_LOCK_H__
+ 
+-- 
+2.17.1
+
+
+From a2ab040a6c8da2794ba2bd17996d33367c4b039f Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sat, 18 Jan 2020 16:48:44 +0100
+Subject: [PATCH 04/22] fix
+
+---
+ config.sub                                |  2 +-
+ libgloss/arm/configure                    |  2 +-
+ newlib/libc/sys/zephyr/include/sys/lock.h | 14 ++++++++------
+ 3 files changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/config.sub b/config.sub
+index c95acc6..57615fa 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1376,7 +1376,7 @@ case $os in
+ 	     | powermax* | dnix* | nx6 | nx7 | sei* | dragonfly* \
+ 	     | skyos* | haiku* | rdos* | toppers* | drops* | es* \
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+-	     | midnightbsd*)
++	     | midnightbsd* | zephyr*)
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
+ 	qnx*)
+diff --git a/libgloss/arm/configure b/libgloss/arm/configure
+index 1aed3a9..a47b2b7 100644
+--- a/libgloss/arm/configure
++++ b/libgloss/arm/configure
+@@ -2531,7 +2531,7 @@ test "${CCASFLAGS+set}" = set || CCASFLAGS=$CFLAGS
+ 
+ 
+ case "${target}" in
+-  *-*-elf | *-*-eabi* | *-*-tirtos*)
++  *-*-elf | *-*-eabi* | *-*-tirtos* | *-*-zephyr*)
+ 	objtype=elf-
+ 	;;
+   *-*-coff)
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 854fb75..e340033 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -29,27 +29,29 @@
+  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+-#pragma GCC error "lock included"
++
+ #ifndef __SYS_LOCK_H__
+ #define __SYS_LOCK_H__
+ 
++
++
+ typedef struct {
+-    void *dummy[8];
++    char dummy[64];
+ } z_gthread_cond_t;
+ 
+ typedef struct {
+-    void *dummy[8];
++    char dummy[64];
+ } z_gthread_mutex_t;
+ 
+ typedef struct {
+-    void *dummy[8];
++    char dummy[64];
+ } z_gthread_recursive_mutex_t;
+ 
+ 
+ 
+ /* Newlib lock structs */
+-typedef struct z_gthread_mutex_t            _LOCK_T;
+-typedef struct z_gthread_recursive_mutex_t  _LOCK_RECURSIVE_T;
++typedef z_gthread_mutex_t            _LOCK_T;
++typedef z_gthread_recursive_mutex_t  _LOCK_RECURSIVE_T;
+ 
+ /* Newlib lock functions */
+ #define __LOCK_INIT(_qualifier, _designator) \
+-- 
+2.17.1
+
+
+From b7c6c7300651d0b5b6a7eeb99602e2ae985d1608 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sat, 18 Jan 2020 18:13:03 +0100
+Subject: [PATCH 05/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index e340033..14a75f9 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -36,15 +36,15 @@
+ 
+ 
+ typedef struct {
+-    char dummy[64];
++   void *dummy[8];
+ } z_gthread_cond_t;
+ 
+ typedef struct {
+-    char dummy[64];
++    void *dummy[8];
+ } z_gthread_mutex_t;
+ 
+ typedef struct {
+-    char dummy[64];
++    void *dummy[8];
+ } z_gthread_recursive_mutex_t;
+ 
+ 
+@@ -54,6 +54,15 @@ typedef z_gthread_mutex_t            _LOCK_T;
+ typedef z_gthread_recursive_mutex_t  _LOCK_RECURSIVE_T;
+ 
+ /* Newlib lock functions */
++#include <_ansi.h>
++
++#define __LOCK_INIT(class,lock) \
++    class _LOCK_T lock = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}}
++
++#define __LOCK_INIT_RECURSIVE(class,lock) \
++    class _LOCK_RECURSIVE_T lock = {.dummy = {0, 0, 0, 0, 0, 0, 0, 0}}
++
++
+ #define __LOCK_INIT(_qualifier, _designator) \
+     _qualifier _LOCK_T _designator = zephyr_gthread_mutex_initializer
+ 
+-- 
+2.17.1
+
+
+From 5eb2a92ff7bf4abd4280ef2fca66057889e65955 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sat, 18 Jan 2020 19:35:04 +0100
+Subject: [PATCH 06/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 14a75f9..760cc23 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -63,11 +63,6 @@ typedef z_gthread_recursive_mutex_t  _LOCK_RECURSIVE_T;
+     class _LOCK_RECURSIVE_T lock = {.dummy = {0, 0, 0, 0, 0, 0, 0, 0}}
+ 
+ 
+-#define __LOCK_INIT(_qualifier, _designator) \
+-    _qualifier _LOCK_T _designator = zephyr_gthread_mutex_initializer
+-
+-#define __LOCK_INIT_RECURSIVE(_qualifier, _designator) \
+-    _qualifier _LOCK_RECURSIVE_T _designator = zephyr_gthread_recursive_mutex_initializer
+ 
+ #define __lock_init(_lock) zephyr_gthread_mutex_initialize(&_lock)
+ #define __lock_acquire(_lock) zephyr_gthread_mutex_lock(&_lock)
+-- 
+2.17.1
+
+
+From 2eaa4746719237328f8204bc29cb42ee90a684de Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sat, 18 Jan 2020 21:48:24 +0100
+Subject: [PATCH 07/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h |  77 +++++++++---
+ newlib/libc/sys/zephyr/lock.c             | 146 +++++++++++++++++++---
+ 2 files changed, 185 insertions(+), 38 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 760cc23..2cca44c 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -33,7 +33,11 @@
+ #ifndef __SYS_LOCK_H__
+ #define __SYS_LOCK_H__
+ 
++#include <stddef.h>
+ 
++__BEGIN_DECLS
++
++struct timespec;
+ 
+ typedef struct {
+    void *dummy[8];
+@@ -41,42 +45,79 @@ typedef struct {
+ 
+ typedef struct {
+     void *dummy[8];
+-} z_gthread_mutex_t;
++} z_gthread_sem_t;
+ 
+ typedef struct {
+     void *dummy[8];
+-} z_gthread_recursive_mutex_t;
++} z_gthread_mutex_t;
++
++typedef void * _z_gthread_t;
+ 
+ 
+ 
+ /* Newlib lock structs */
+-typedef z_gthread_mutex_t            _LOCK_T;
+-typedef z_gthread_recursive_mutex_t  _LOCK_RECURSIVE_T;
++typedef z_gthread_sem_t    _LOCK_T;
++typedef z_gthread_mutex_t  _LOCK_RECURSIVE_T;
++
++/* These functions are implemented in the source of Zephyr OS*/
++
++int _z_gthread_create (_z_gthread_t *threadid, void *(*func) (void *);
++int _z_gthread_join (_z_gthread_t threadid, void **value_ptr);
++int _z_gthread_detach (_z_gthread_t threadid);
++int _z_gthread_equal (_z_gthread_t t1, _z_gthread_t t2);
++_z_gthread_t _z_gthread_self (void);
++int _z_gthread_yield (void);
++
++z_gthread_sem_t _z_gthread_sem_initializer (void);
++int _z_gthread_sem_initialize (z_gthread_sem_t *sem);
++int _z_gthread_sem_lock (z_gthread_sem_t *sem);
++int _z_gthread_sem_trylock (z_gthread_sem_t *sem);
++int _z_gthread_sem_timedlock (z_gthread_sem_t *sem,   const timespec *timeout);
++int _z_gthread_sem_unlock (z_gthread_sem_t *sem);
++int _z_gthread_sem_destroy (z_gthread_sem_t *sem);
++
++z_gthread_mutex_t _z_gthread_mutex_initializer(void);
++int _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx);
++int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx);
++int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx);
++int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx,   const timespec *timeout);
++int _z_gthread_mutex_unlock (z_gthread_mutex_t *mtx);
++int _z_gthread_mutex_destroy (z_gthread_mutex_t *mtx);
++
++z_gthread_cond_t _z_gthread_cond_initializer (void);
++int _z_gthread_cond_initialize (z_gthread_cond_t *cond);
++int _z_gthread_cond_broadcast (z_gthread_cond_t *cond);
++int _z_gthread_cond_signal (z_gthread_cond_t *cond);
++int _z_gthread_cond_wait (z_gthread_cond_t *cond, z_gthread_sem_t *sem);
++int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem,  const timespec *timeout);
++int _z_gthread_cond_wait_recursive (z_gthread_cond_t *cond, z_gthread_mutex_t *mtx);
++int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
++
+ 
+ /* Newlib lock functions */
+ #include <_ansi.h>
+ 
++
+ #define __LOCK_INIT(class,lock) \
+-    class _LOCK_T lock = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}}
++    class _LOCK_T lock = _z_gthread_sem_initialize()
+ 
+ #define __LOCK_INIT_RECURSIVE(class,lock) \
+-    class _LOCK_RECURSIVE_T lock = {.dummy = {0, 0, 0, 0, 0, 0, 0, 0}}
+-
+-
++    class _LOCK_RECURSIVE_T lock = _z_gthread_mutex_initialize()
+ 
+-#define __lock_init(_lock) zephyr_gthread_mutex_initialize(&_lock)
+-#define __lock_acquire(_lock) zephyr_gthread_mutex_lock(&_lock)
+-#define __lock_try_acquire(lock) zephyr_gthread_mutex_trylock(&_lock)
+-#define __lock_release(_lock) zephyr_gthread_mutex_unlock(&_lock)
+-#define __lock_close(_lock) zephyr_gthread_mutex_destroy(&_lock)
+ 
+-#define __lock_init_recursive(_lock) zephyr_gthread_recursive_mutex_initialize(&_lock)
+-#define __lock_acquire_recursive(_lock) zephyr_gthread_recursive_mutex_lock(&_lock)
+-#define __lock_try_acquire_recursive(lock) zephyr_gthread_recursive_mutex_trylock(&_lock)
+-#define __lock_release_recursive(_lock) zephyr_gthread_recursive_mutex_unlock(&_lock)
+-#define __lock_close_recursive(_lock) zephyr_gthread_recursive_mutex_destroy(&_lock)
++#define __lock_init(_lock) _z_gthread_sem_initialize(&_lock)
++#define __lock_acquire(_lock) _z_gthread_sem_lock(&_lock)
++#define __lock_try_acquire(lock) _z_gthread_sem_trylock(&_lock)
++#define __lock_release(_lock) _z_gthread_sem_unlock(&_lock)
++#define __lock_close(_lock) _z_gthread_sem_destroy(&_lock)
+ 
++#define __lock_init_recursive(_lock) _z_gthread_mutex_initialize(&_lock)
++#define __lock_acquire_recursive(_lock) _z_gthread_mutex_lock(&_lock)
++#define __lock_try_acquire_recursive(lock) _z_gthread_mutex_trylock(&_lock)
++#define __lock_release_recursive(_lock) _z_gthread_mutex_unlock(&_lock)
++#define __lock_close_recursive(_lock) _z_gthread_mutex_destroy(&_lock)
+ 
+ 
++__END_DECLS
+ 
+ #endif /* !__SYS_LOCK_H__ */
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index fe37839..e7922a3 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -35,52 +35,158 @@
+ 
+ /* Empty stubs for sys/lock APIs */
+ 
+-void zephyr_gthread_mutex_initialize(_LOCK_T *lock)
++/* Threads */
++int _z_gthread_create (_z_gthread_t *threadid, void *(*func) (void *)
+ {
+-    return;
++    return 0;
+ }
+ 
+-void zephyr_gthread_recursive_mutex_initialize(_LOCK_RECURSIVE_T *lock)
++int _z_gthread_join (_z_gthread_t threadid, void **value_ptr)
+ {
+-    return;
++    return 0;
+ }
+ 
+-void zephyr_gthread_mutex_destroy(_LOCK_T *lock)
++int _z_gthread_detach (_z_gthread_t threadid)
+ {
+-    return;
++    return 0;
+ }
+ 
+-void zephyr_gthread_recursive_mutex_destroy(_LOCK_RECURSIVE_T *lock)
++int _z_gthread_equal (_z_gthread_t t1, _z_gthread_t t2)
+ {
+-    return;
++    return 0;
++}
++_z_gthread_t _z_gthread_self (void)
++{
++    return 0;
++}
++
++int _z_gthread_yield (void)
++{
++    return 0;
++}
++
++/* Semaphore (non-recursive mutex) */
++z_gthread_sem_t _z_gthread_sem_initializer (void)
++{
++    z_gthread_sem_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    return ret;
+ }
+ 
+-void zephyr_gthread_mutex_lock(_LOCK_T *lock)
++int _z_gthread_sem_initialize (z_gthread_sem_t *sem)
+ {
+-    return;
++
++}
++
++int _z_gthread_sem_initialize(z_gthread_sem_t *sem)
++{
++    return 0;
+ }
+ 
+-void zephyr_gthread_recursive_mutex_lock(_LOCK_RECURSIVE_T *lock)
++int _z_gthread_sem_lock (z_gthread_sem_t *sem)
+ {
+-    return;
++    return 0;
++}
++
++int _z_gthread_sem_trylock (z_gthread_sem_t *sem)
++{
++    return 0;
++}
++
++int _z_gthread_sem_timedlock (z_gthread_sem_t *sem,   const timespec *timeout)
++{
++    return 0;
++}
++
++int _z_gthread_sem_unlock (z_gthread_sem_t *sem)
++{
++    return 0;
++}
++
++int _z_gthread_sem_destroy (z_gthread_sem_t *sem)
++{
++    return 0;
++}
++
++/* Recursive mutex */
++z_gthread_mutex_t _z_gthread_mutex_initializer (void)
++{
++    z_gthread_mutex_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    return ret;
++}
++
++int _z_gthread_mutex_initialize (z_gthread_mutex_t *mtx)
++{
++
+ }
+ 
+-void zephyr_gthread_mutex_unlock(_LOCK_T *lock)
++int _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx)
+ {
+-    return;
++    return 0;
+ }
+ 
+-void zephyr_gthread_recursive_mutex_unlock(_LOCK_RECURSIVE_T *lock)\
++int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx)
+ {
+-    return;
++    return 0;
+ }
+ 
+-int zephyr_gthread_mutex_trylock(_LOCK_T *lock)
++int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx)
+ {
+-    return -1;
++    return 0;
+ }
+ 
+-int zephyr_gthread_recursive_mutex_trylock(_LOCK_RECURSIVE_T *lock)
++int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx,   const timespec *timeout)
+ {
+-    return -1;
++    return 0;
+ }
++
++int _z_gthread_mutex_unlock (z_gthread_mutex_t *mtx)
++{
++    return 0;
++}
++
++int _z_gthread_mutex_destroy (z_gthread_mutex_t *mtx)
++{
++    return 0;
++}
++
++/* Conditions */
++z_gthread_cond_t _z_gthread_cond_initializer (void)
++{
++    z_gthread_cond_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    return ret;
++}
++
++int _z_gthread_cond_initialize (z_gthread_cond_t *cond)
++{
++
++}
++
++int _z_gthread_cond_broadcast (z_gthread_cond_t *cond)
++{
++    return 0;
++}
++
++int _z_gthread_cond_signal (z_gthread_cond_t *cond)
++{
++    return 0;
++}
++
++int _z_gthread_cond_wait (z_gthread_cond_t *cond, z_gthread_sem_t *sem)
++{
++    return 0;
++}
++
++int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem,  const timespec *timeout)
++{
++    return 0;
++}
++
++int _z_gthread_cond_wait_recursive (z_gthread_cond_t *cond, z_gthread_mutex_t *mtx)
++{
++    return 0;
++}
++
++int _z_gthread_cond_destroy (z_gthread_cond_t *cond)
++{
++    return 0;
++}
+\ No newline at end of file
+-- 
+2.17.1
+
+
+From 9470796c4f0a41b7aeafa565799d77cc5008a9f9 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sat, 18 Jan 2020 22:57:43 +0100
+Subject: [PATCH 08/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 2cca44c..dfdcb1b 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -34,10 +34,9 @@
+ #define __SYS_LOCK_H__
+ 
+ #include <stddef.h>
++#include <sys/_timespec.h>
+ 
+-__BEGIN_DECLS
+ 
+-struct timespec;
+ 
+ typedef struct {
+    void *dummy[8];
+@@ -118,6 +117,5 @@ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ #define __lock_close_recursive(_lock) _z_gthread_mutex_destroy(&_lock)
+ 
+ 
+-__END_DECLS
+ 
+ #endif /* !__SYS_LOCK_H__ */
+-- 
+2.17.1
+
+
+From 61d70a20a88f7511df27696467c3186977d4e199 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 09:02:08 +0100
+Subject: [PATCH 09/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index dfdcb1b..e3ed325 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -34,9 +34,11 @@
+ #define __SYS_LOCK_H__
+ 
+ #include <stddef.h>
+-#include <sys/_timespec.h>
+-
++#include <sched.h>
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
+ 
+ typedef struct {
+    void *dummy[8];
+@@ -116,6 +118,8 @@ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ #define __lock_release_recursive(_lock) _z_gthread_mutex_unlock(&_lock)
+ #define __lock_close_recursive(_lock) _z_gthread_mutex_destroy(&_lock)
+ 
+-
++#ifdef __cplusplus
++}
++#endif
+ 
+ #endif /* !__SYS_LOCK_H__ */
+-- 
+2.17.1
+
+
+From 6a5200ba0fc16615e4b24ebfb630849e86054c36 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 09:45:03 +0100
+Subject: [PATCH 10/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 4 ++--
+ newlib/libc/sys/zephyr/lock.c             | 3 +--
+ 2 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index e3ed325..94a2c30 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -34,7 +34,7 @@
+ #define __SYS_LOCK_H__
+ 
+ #include <stddef.h>
+-#include <sched.h>
++
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -53,7 +53,7 @@ typedef struct {
+ } z_gthread_mutex_t;
+ 
+ typedef void * _z_gthread_t;
+-
++struct timespec;
+ 
+ 
+ /* Newlib lock structs */
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index e7922a3..2ae6b48 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -30,8 +30,7 @@
+  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
+-#include <sys/lock.h>
+-
++#include <sys/_timespec.h>
+ 
+ /* Empty stubs for sys/lock APIs */
+ 
+-- 
+2.17.1
+
+
+From 69b957536065ab43457b61a547f8fa49dd4329c9 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 10:21:36 +0100
+Subject: [PATCH 11/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 12 +++---------
+ 1 file changed, 3 insertions(+), 9 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 94a2c30..9e422c0 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -33,12 +33,10 @@
+ #ifndef __SYS_LOCK_H__
+ #define __SYS_LOCK_H__
+ 
++#include <sys/cdefs.h>
+ #include <stddef.h>
+ 
+-
+-#ifdef __cplusplus
+-extern "C" {
+-#endif
++__BEGIN_DECLS
+ 
+ typedef struct {
+    void *dummy[8];
+@@ -96,8 +94,6 @@ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ 
+ 
+ /* Newlib lock functions */
+-#include <_ansi.h>
+-
+ 
+ #define __LOCK_INIT(class,lock) \
+     class _LOCK_T lock = _z_gthread_sem_initialize()
+@@ -118,8 +114,6 @@ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ #define __lock_release_recursive(_lock) _z_gthread_mutex_unlock(&_lock)
+ #define __lock_close_recursive(_lock) _z_gthread_mutex_destroy(&_lock)
+ 
+-#ifdef __cplusplus
+-}
+-#endif
++__END_DECLS
+ 
+ #endif /* !__SYS_LOCK_H__ */
+-- 
+2.17.1
+
+
+From bae70af3322580719f98950e773efb0a25dd3500 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 10:26:15 +0100
+Subject: [PATCH 12/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 6 +++---
+ newlib/libc/sys/zephyr/lock.c             | 6 +++---
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 9e422c0..a2d60b5 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -71,7 +71,7 @@ z_gthread_sem_t _z_gthread_sem_initializer (void);
+ int _z_gthread_sem_initialize (z_gthread_sem_t *sem);
+ int _z_gthread_sem_lock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_trylock (z_gthread_sem_t *sem);
+-int _z_gthread_sem_timedlock (z_gthread_sem_t *sem,   const timespec *timeout);
++int _z_gthread_sem_timedlock (z_gthread_sem_t *sem,   const struct timespec *timeout);
+ int _z_gthread_sem_unlock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_destroy (z_gthread_sem_t *sem);
+ 
+@@ -79,7 +79,7 @@ z_gthread_mutex_t _z_gthread_mutex_initializer(void);
+ int _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx);
+-int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx,   const timespec *timeout);
++int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx,   const struct timespec *timeout);
+ int _z_gthread_mutex_unlock (z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_destroy (z_gthread_mutex_t *mtx);
+ 
+@@ -88,7 +88,7 @@ int _z_gthread_cond_initialize (z_gthread_cond_t *cond);
+ int _z_gthread_cond_broadcast (z_gthread_cond_t *cond);
+ int _z_gthread_cond_signal (z_gthread_cond_t *cond);
+ int _z_gthread_cond_wait (z_gthread_cond_t *cond, z_gthread_sem_t *sem);
+-int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem,  const timespec *timeout);
++int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem,  const struct timespec *timeout);
+ int _z_gthread_cond_wait_recursive (z_gthread_cond_t *cond, z_gthread_mutex_t *mtx);
+ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ 
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index 2ae6b48..8ec8c30 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -91,7 +91,7 @@ int _z_gthread_sem_trylock (z_gthread_sem_t *sem)
+     return 0;
+ }
+ 
+-int _z_gthread_sem_timedlock (z_gthread_sem_t *sem,   const timespec *timeout)
++int _z_gthread_sem_timedlock (z_gthread_sem_t *sem,   const struct timespec *timeout)
+ {
+     return 0;
+ }
+@@ -133,7 +133,7 @@ int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx)
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx,   const timespec *timeout)
++int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx,   const struct timespec *timeout)
+ {
+     return 0;
+ }
+@@ -175,7 +175,7 @@ int _z_gthread_cond_wait (z_gthread_cond_t *cond, z_gthread_sem_t *sem)
+     return 0;
+ }
+ 
+-int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem,  const timespec *timeout)
++int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem,  const struct timespec *timeout)
+ {
+     return 0;
+ }
+-- 
+2.17.1
+
+
+From 34c8e7968ebfad52673881a54142684bbef36b60 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 10:36:53 +0100
+Subject: [PATCH 13/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 8 ++++----
+ newlib/libc/sys/zephyr/lock.c             | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index a2d60b5..f916e9f 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -60,7 +60,7 @@ typedef z_gthread_mutex_t  _LOCK_RECURSIVE_T;
+ 
+ /* These functions are implemented in the source of Zephyr OS*/
+ 
+-int _z_gthread_create (_z_gthread_t *threadid, void *(*func) (void *);
++int _z_gthread_create (_z_gthread_t *threadid, void *(*func) (void *));
+ int _z_gthread_join (_z_gthread_t threadid, void **value_ptr);
+ int _z_gthread_detach (_z_gthread_t threadid);
+ int _z_gthread_equal (_z_gthread_t t1, _z_gthread_t t2);
+@@ -71,7 +71,7 @@ z_gthread_sem_t _z_gthread_sem_initializer (void);
+ int _z_gthread_sem_initialize (z_gthread_sem_t *sem);
+ int _z_gthread_sem_lock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_trylock (z_gthread_sem_t *sem);
+-int _z_gthread_sem_timedlock (z_gthread_sem_t *sem,   const struct timespec *timeout);
++int _z_gthread_sem_timedlock (z_gthread_sem_t *sem, const struct timespec *);
+ int _z_gthread_sem_unlock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_destroy (z_gthread_sem_t *sem);
+ 
+@@ -79,7 +79,7 @@ z_gthread_mutex_t _z_gthread_mutex_initializer(void);
+ int _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx);
+-int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx,   const struct timespec *timeout);
++int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx, const struct timespec *);
+ int _z_gthread_mutex_unlock (z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_destroy (z_gthread_mutex_t *mtx);
+ 
+@@ -88,7 +88,7 @@ int _z_gthread_cond_initialize (z_gthread_cond_t *cond);
+ int _z_gthread_cond_broadcast (z_gthread_cond_t *cond);
+ int _z_gthread_cond_signal (z_gthread_cond_t *cond);
+ int _z_gthread_cond_wait (z_gthread_cond_t *cond, z_gthread_sem_t *sem);
+-int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem,  const struct timespec *timeout);
++int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem, const struct timespec *);
+ int _z_gthread_cond_wait_recursive (z_gthread_cond_t *cond, z_gthread_mutex_t *mtx);
+ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ 
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index 8ec8c30..71847e0 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -35,7 +35,7 @@
+ /* Empty stubs for sys/lock APIs */
+ 
+ /* Threads */
+-int _z_gthread_create (_z_gthread_t *threadid, void *(*func) (void *)
++int _z_gthread_create (_z_gthread_t *threadid, void *(*func) (void *))
+ {
+     return 0;
+ }
+-- 
+2.17.1
+
+
+From 0833c0a7c0c30860e38e46a2439117a3c6f4ee06 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 11:19:32 +0100
+Subject: [PATCH 14/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 10 +++++-----
+ newlib/libc/sys/zephyr/lock.c             |  6 +++---
+ 2 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index f916e9f..4cdcf6d 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -68,7 +68,7 @@ _z_gthread_t _z_gthread_self (void);
+ int _z_gthread_yield (void);
+ 
+ z_gthread_sem_t _z_gthread_sem_initializer (void);
+-int _z_gthread_sem_initialize (z_gthread_sem_t *sem);
++void _z_gthread_sem_initialize (z_gthread_sem_t *sem);
+ int _z_gthread_sem_lock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_trylock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_timedlock (z_gthread_sem_t *sem, const struct timespec *);
+@@ -76,7 +76,7 @@ int _z_gthread_sem_unlock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_destroy (z_gthread_sem_t *sem);
+ 
+ z_gthread_mutex_t _z_gthread_mutex_initializer(void);
+-int _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx);
++void _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx, const struct timespec *);
+@@ -84,7 +84,7 @@ int _z_gthread_mutex_unlock (z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_destroy (z_gthread_mutex_t *mtx);
+ 
+ z_gthread_cond_t _z_gthread_cond_initializer (void);
+-int _z_gthread_cond_initialize (z_gthread_cond_t *cond);
++void _z_gthread_cond_initialize (z_gthread_cond_t *cond);
+ int _z_gthread_cond_broadcast (z_gthread_cond_t *cond);
+ int _z_gthread_cond_signal (z_gthread_cond_t *cond);
+ int _z_gthread_cond_wait (z_gthread_cond_t *cond, z_gthread_sem_t *sem);
+@@ -96,10 +96,10 @@ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ /* Newlib lock functions */
+ 
+ #define __LOCK_INIT(class,lock) \
+-    class _LOCK_T lock = _z_gthread_sem_initialize()
++    class _LOCK_T lock = _z_gthread_sem_initializer()
+ 
+ #define __LOCK_INIT_RECURSIVE(class,lock) \
+-    class _LOCK_RECURSIVE_T lock = _z_gthread_mutex_initialize()
++    class _LOCK_RECURSIVE_T lock = _z_gthread_mutex_initializer()
+ 
+ 
+ #define __lock_init(_lock) _z_gthread_sem_initialize(&_lock)
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index 71847e0..b98e70f 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -71,7 +71,7 @@ z_gthread_sem_t _z_gthread_sem_initializer (void)
+     return ret;
+ }
+ 
+-int _z_gthread_sem_initialize (z_gthread_sem_t *sem)
++void _z_gthread_sem_initialize (z_gthread_sem_t *sem)
+ {
+ 
+ }
+@@ -113,7 +113,7 @@ z_gthread_mutex_t _z_gthread_mutex_initializer (void)
+     return ret;
+ }
+ 
+-int _z_gthread_mutex_initialize (z_gthread_mutex_t *mtx)
++void _z_gthread_mutex_initialize (z_gthread_mutex_t *mtx)
+ {
+ 
+ }
+@@ -155,7 +155,7 @@ z_gthread_cond_t _z_gthread_cond_initializer (void)
+     return ret;
+ }
+ 
+-int _z_gthread_cond_initialize (z_gthread_cond_t *cond)
++void _z_gthread_cond_initialize (z_gthread_cond_t *cond)
+ {
+ 
+ }
+-- 
+2.17.1
+
+
+From 8ee83bb78581a1971956b9422c471180a3169ed7 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 11:52:11 +0100
+Subject: [PATCH 15/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 14 +++++++++++---
+ newlib/libc/sys/zephyr/lock.c             |  6 ++++--
+ 2 files changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 4cdcf6d..ffc77b4 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -67,7 +67,7 @@ int _z_gthread_equal (_z_gthread_t t1, _z_gthread_t t2);
+ _z_gthread_t _z_gthread_self (void);
+ int _z_gthread_yield (void);
+ 
+-z_gthread_sem_t _z_gthread_sem_initializer (void);
++//z_gthread_sem_t _z_gthread_sem_initializer (void);
+ void _z_gthread_sem_initialize (z_gthread_sem_t *sem);
+ int _z_gthread_sem_lock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_trylock (z_gthread_sem_t *sem);
+@@ -75,7 +75,7 @@ int _z_gthread_sem_timedlock (z_gthread_sem_t *sem, const struct timespec *);
+ int _z_gthread_sem_unlock (z_gthread_sem_t *sem);
+ int _z_gthread_sem_destroy (z_gthread_sem_t *sem);
+ 
+-z_gthread_mutex_t _z_gthread_mutex_initializer(void);
++//z_gthread_mutex_t _z_gthread_mutex_initializer(void);
+ void _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx);
+ int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx);
+@@ -93,14 +93,22 @@ int _z_gthread_cond_wait_recursive (z_gthread_cond_t *cond, z_gthread_mutex_t *m
+ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ 
+ 
++#define _z_gthread_sem_initializer { 0,0,0,0,0,0,0,0 }
++#define _z_gthread_mutex_initializer { 0,0,0,0,0,0,0,0 }
++
+ /* Newlib lock functions */
++#define __LOCK_INIT(_qualifier, _designator) \
++    _qualifier _LOCK_T _designator = _z_gthread_sem_initializer
+ 
++#define __LOCK_INIT_RECURSIVE(_qualifier, _designator) \
++    _qualifier _LOCK_RECURSIVE_T _designator = _z_gthread_mutex_initializer
++/*
+ #define __LOCK_INIT(class,lock) \
+     class _LOCK_T lock = _z_gthread_sem_initializer()
+ 
+ #define __LOCK_INIT_RECURSIVE(class,lock) \
+     class _LOCK_RECURSIVE_T lock = _z_gthread_mutex_initializer()
+-
++*/
+ 
+ #define __lock_init(_lock) _z_gthread_sem_initialize(&_lock)
+ #define __lock_acquire(_lock) _z_gthread_sem_lock(&_lock)
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index b98e70f..df5c3d5 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -65,12 +65,13 @@ int _z_gthread_yield (void)
+ }
+ 
+ /* Semaphore (non-recursive mutex) */
++/*
+ z_gthread_sem_t _z_gthread_sem_initializer (void)
+ {
+     z_gthread_sem_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
+     return ret;
+ }
+-
++*/
+ void _z_gthread_sem_initialize (z_gthread_sem_t *sem)
+ {
+ 
+@@ -107,12 +108,13 @@ int _z_gthread_sem_destroy (z_gthread_sem_t *sem)
+ }
+ 
+ /* Recursive mutex */
++/*
+ z_gthread_mutex_t _z_gthread_mutex_initializer (void)
+ {
+     z_gthread_mutex_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
+     return ret;
+ }
+-
++*/
+ void _z_gthread_mutex_initialize (z_gthread_mutex_t *mtx)
+ {
+ 
+-- 
+2.17.1
+
+
+From 6c0a4cae9f328011a76ac1ce136545d65edf4dbc Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 12:27:38 +0100
+Subject: [PATCH 16/22] fix
+
+---
+ newlib/libc/sys/zephyr/lock.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index df5c3d5..ed9b70c 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -74,12 +74,7 @@ z_gthread_sem_t _z_gthread_sem_initializer (void)
+ */
+ void _z_gthread_sem_initialize (z_gthread_sem_t *sem)
+ {
+-
+-}
+-
+-int _z_gthread_sem_initialize(z_gthread_sem_t *sem)
+-{
+-    return 0;
++    return;
+ }
+ 
+ int _z_gthread_sem_lock (z_gthread_sem_t *sem)
+@@ -117,12 +112,7 @@ z_gthread_mutex_t _z_gthread_mutex_initializer (void)
+ */
+ void _z_gthread_mutex_initialize (z_gthread_mutex_t *mtx)
+ {
+-
+-}
+-
+-int _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx)
+-{
+-    return 0;
++    return;
+ }
+ 
+ int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx)
+-- 
+2.17.1
+
+
+From 9a2fa498dace938290baf377ff7e5feca545c5f4 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 13:18:43 +0100
+Subject: [PATCH 17/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 3 +--
+ newlib/libc/sys/zephyr/lock.c             | 2 +-
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index ffc77b4..d7e13e9 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -59,8 +59,7 @@ typedef z_gthread_sem_t    _LOCK_T;
+ typedef z_gthread_mutex_t  _LOCK_RECURSIVE_T;
+ 
+ /* These functions are implemented in the source of Zephyr OS*/
+-
+-int _z_gthread_create (_z_gthread_t *threadid, void *(*func) (void *));
++int _z_gthread_create (_z_gthread_t *threadid, void *(*__func) (void *),  void *__args);
+ int _z_gthread_join (_z_gthread_t threadid, void **value_ptr);
+ int _z_gthread_detach (_z_gthread_t threadid);
+ int _z_gthread_equal (_z_gthread_t t1, _z_gthread_t t2);
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index ed9b70c..12d2764 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -35,7 +35,7 @@
+ /* Empty stubs for sys/lock APIs */
+ 
+ /* Threads */
+-int _z_gthread_create (_z_gthread_t *threadid, void *(*func) (void *))
++int _z_gthread_create (_z_gthread_t *threadid, void *(*__func) (void *),  void *__args)
+ {
+     return 0;
+ }
+-- 
+2.17.1
+
+
+From 6ed016046200b1c68fcdb9c8745566e48fcf0a2c Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 14:43:26 +0100
+Subject: [PATCH 18/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 88 +++++++++++------------
+ newlib/libc/sys/zephyr/lock.c             | 53 +++++++-------
+ 2 files changed, 71 insertions(+), 70 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index d7e13e9..b1549f3 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -38,69 +38,69 @@
+ 
+ __BEGIN_DECLS
+ 
+-typedef struct {
+-   void *dummy[8];
+-} z_gthread_cond_t;
++struct z_gthread_cond_t {
++   unsigned int dummy[8];
++};
+ 
+-typedef struct {
+-    void *dummy[8];
+-} z_gthread_sem_t;
++struct z_gthread_sem_t {
++   unsigned int dummy[8];
++};
+ 
+-typedef struct {
+-    void *dummy[8];
+-} z_gthread_mutex_t;
++struct z_gthread_mutex_t {
++    unsigned int dummy[8];
++};
+ 
+ typedef void * _z_gthread_t;
+ struct timespec;
+ 
+ 
+ /* Newlib lock structs */
+-typedef z_gthread_sem_t    _LOCK_T;
+-typedef z_gthread_mutex_t  _LOCK_RECURSIVE_T;
++typedef struct z_gthread_sem_t    _LOCK_T;
++typedef struct z_gthread_mutex_t  _LOCK_RECURSIVE_T;
+ 
+ /* These functions are implemented in the source of Zephyr OS*/
+ int _z_gthread_create (_z_gthread_t *threadid, void *(*__func) (void *),  void *__args);
+-int _z_gthread_join (_z_gthread_t threadid, void **value_ptr);
+-int _z_gthread_detach (_z_gthread_t threadid);
+-int _z_gthread_equal (_z_gthread_t t1, _z_gthread_t t2);
++int _z_gthread_join (_z_gthread_t , void **);
++int _z_gthread_detach (_z_gthread_t );
++int _z_gthread_equal (_z_gthread_t , _z_gthread_t );
+ _z_gthread_t _z_gthread_self (void);
+ int _z_gthread_yield (void);
+ 
+-//z_gthread_sem_t _z_gthread_sem_initializer (void);
+-void _z_gthread_sem_initialize (z_gthread_sem_t *sem);
+-int _z_gthread_sem_lock (z_gthread_sem_t *sem);
+-int _z_gthread_sem_trylock (z_gthread_sem_t *sem);
+-int _z_gthread_sem_timedlock (z_gthread_sem_t *sem, const struct timespec *);
+-int _z_gthread_sem_unlock (z_gthread_sem_t *sem);
+-int _z_gthread_sem_destroy (z_gthread_sem_t *sem);
+-
+-//z_gthread_mutex_t _z_gthread_mutex_initializer(void);
+-void _z_gthread_mutex_initialize(z_gthread_mutex_t *mtx);
+-int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx);
+-int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx);
+-int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx, const struct timespec *);
+-int _z_gthread_mutex_unlock (z_gthread_mutex_t *mtx);
+-int _z_gthread_mutex_destroy (z_gthread_mutex_t *mtx);
+-
+-z_gthread_cond_t _z_gthread_cond_initializer (void);
+-void _z_gthread_cond_initialize (z_gthread_cond_t *cond);
+-int _z_gthread_cond_broadcast (z_gthread_cond_t *cond);
+-int _z_gthread_cond_signal (z_gthread_cond_t *cond);
+-int _z_gthread_cond_wait (z_gthread_cond_t *cond, z_gthread_sem_t *sem);
+-int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem, const struct timespec *);
+-int _z_gthread_cond_wait_recursive (z_gthread_cond_t *cond, z_gthread_mutex_t *mtx);
+-int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
++//struct z_gthread_sem_t _z_gthread_sem_initializer (void);
++void _z_gthread_sem_initialize (struct z_gthread_sem_t *);
++int _z_gthread_sem_lock (struct z_gthread_sem_t *);
++int _z_gthread_sem_trylock (struct z_gthread_sem_t *);
++int _z_gthread_sem_timedlock (struct z_gthread_sem_t *, const struct timespec *);
++int _z_gthread_sem_unlock (struct z_gthread_sem_t *);
++int _z_gthread_sem_destroy (struct z_gthread_sem_t *);
++
++//struct z_gthread_mutex_t _z_gthread_mutex_initializer(void);
++void _z_gthread_mutex_initialize(struct z_gthread_mutex_t *);
++int _z_gthread_mutex_lock (struct z_gthread_mutex_t *);
++int _z_gthread_mutex_trylock (struct z_gthread_mutex_t *);
++int _z_gthread_mutex_timedlock (struct z_gthread_mutex_t *, const struct timespec *);
++int _z_gthread_mutex_unlock (struct z_gthread_mutex_t *);
++int _z_gthread_mutex_destroy (struct z_gthread_mutex_t *);
++
++//struct z_gthread_cond_t _z_gthread_cond_initializer (void);
++void _z_gthread_cond_initialize (struct z_gthread_cond_t *);
++int _z_gthread_cond_broadcast (struct z_gthread_cond_t *);
++int _z_gthread_cond_signal (struct z_gthread_cond_t *);
++int _z_gthread_cond_wait (struct z_gthread_cond_t *, struct z_gthread_sem_t *);
++int _z_gthread_cond_timedwait (struct z_gthread_cond_t *, struct z_gthread_sem_t *, const struct timespec *);
++int _z_gthread_cond_wait_recursive (struct z_gthread_cond_t *, struct z_gthread_mutex_t *);
++int _z_gthread_cond_destroy (struct z_gthread_cond_t *);
+ 
+ 
+ #define _z_gthread_sem_initializer { 0,0,0,0,0,0,0,0 }
+ #define _z_gthread_mutex_initializer { 0,0,0,0,0,0,0,0 }
+ 
+ /* Newlib lock functions */
+-#define __LOCK_INIT(_qualifier, _designator) \
+-    _qualifier _LOCK_T _designator = _z_gthread_sem_initializer
++#define __LOCK_INIT(class, lock) \
++    class _LOCK_T _designator = _z_gthread_sem_initializer
+ 
+-#define __LOCK_INIT_RECURSIVE(_qualifier, _designator) \
+-    _qualifier _LOCK_RECURSIVE_T _designator = _z_gthread_mutex_initializer
++#define __LOCK_INIT_RECURSIVE(class, lock) \
++    class _LOCK_RECURSIVE_T lock = _z_gthread_mutex_initializer
+ /*
+ #define __LOCK_INIT(class,lock) \
+     class _LOCK_T lock = _z_gthread_sem_initializer()
+@@ -111,13 +111,13 @@ int _z_gthread_cond_destroy (z_gthread_cond_t *cond);
+ 
+ #define __lock_init(_lock) _z_gthread_sem_initialize(&_lock)
+ #define __lock_acquire(_lock) _z_gthread_sem_lock(&_lock)
+-#define __lock_try_acquire(lock) _z_gthread_sem_trylock(&_lock)
++#define __lock_try_acquire(lock) _struct z_gthread_sem_trylock(&_lock)
+ #define __lock_release(_lock) _z_gthread_sem_unlock(&_lock)
+ #define __lock_close(_lock) _z_gthread_sem_destroy(&_lock)
+ 
+ #define __lock_init_recursive(_lock) _z_gthread_mutex_initialize(&_lock)
+ #define __lock_acquire_recursive(_lock) _z_gthread_mutex_lock(&_lock)
+-#define __lock_try_acquire_recursive(lock) _z_gthread_mutex_trylock(&_lock)
++#define __lock_try_acquire_recursive(lock) _struct z_gthread_mutex_trylock(&_lock)
+ #define __lock_release_recursive(_lock) _z_gthread_mutex_unlock(&_lock)
+ #define __lock_close_recursive(_lock) _z_gthread_mutex_destroy(&_lock)
+ 
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index 12d2764..0d4fc3b 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -66,118 +66,119 @@ int _z_gthread_yield (void)
+ 
+ /* Semaphore (non-recursive mutex) */
+ /*
+-z_gthread_sem_t _z_gthread_sem_initializer (void)
++struct z_gthread_sem_t _z_gthread_sem_initializer (void)
+ {
+-    z_gthread_sem_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    struct z_gthread_sem_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
+     return ret;
+ }
+ */
+-void _z_gthread_sem_initialize (z_gthread_sem_t *sem)
++void _z_gthread_sem_initialize (struct z_gthread_sem_t *sem)
+ {
+     return;
+ }
+ 
+-int _z_gthread_sem_lock (z_gthread_sem_t *sem)
++int _z_gthread_sem_lock (struct z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_sem_trylock (z_gthread_sem_t *sem)
++int _z_gthread_sem_trylock (struct z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_sem_timedlock (z_gthread_sem_t *sem,   const struct timespec *timeout)
++int _z_gthread_sem_timedlock (struct z_gthread_sem_t *sem,   const struct timespec *timeout)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_sem_unlock (z_gthread_sem_t *sem)
++int _z_gthread_sem_unlock (struct z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_sem_destroy (z_gthread_sem_t *sem)
++int _z_gthread_sem_destroy (struct z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+ /* Recursive mutex */
+ /*
+-z_gthread_mutex_t _z_gthread_mutex_initializer (void)
++struct z_gthread_mutex_t _z_gthread_mutex_initializer (void)
+ {
+-    z_gthread_mutex_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    struct z_gthread_mutex_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
+     return ret;
+ }
+ */
+-void _z_gthread_mutex_initialize (z_gthread_mutex_t *mtx)
++void _z_gthread_mutex_initialize (struct z_gthread_mutex_t *mtx)
+ {
+     return;
+ }
+ 
+-int _z_gthread_mutex_lock (z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_lock (struct z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_trylock (z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_trylock (struct z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_timedlock (z_gthread_mutex_t *mtx,   const struct timespec *timeout)
++int _z_gthread_mutex_timedlock (struct z_gthread_mutex_t *mtx,   const struct timespec *timeout)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_unlock (z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_unlock (struct z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_destroy (z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_destroy (struct z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+ /* Conditions */
+-z_gthread_cond_t _z_gthread_cond_initializer (void)
++/*
++struct z_gthread_cond_t _z_gthread_cond_initializer (void)
+ {
+-    z_gthread_cond_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    struct z_gthread_cond_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
+     return ret;
+ }
+-
+-void _z_gthread_cond_initialize (z_gthread_cond_t *cond)
++*/
++void _z_gthread_cond_initialize (struct z_gthread_cond_t *cond)
+ {
+ 
+ }
+ 
+-int _z_gthread_cond_broadcast (z_gthread_cond_t *cond)
++int _z_gthread_cond_broadcast (struct z_gthread_cond_t *cond)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_signal (z_gthread_cond_t *cond)
++int _z_gthread_cond_signal (struct z_gthread_cond_t *cond)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_wait (z_gthread_cond_t *cond, z_gthread_sem_t *sem)
++int _z_gthread_cond_wait (struct z_gthread_cond_t *cond, struct z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_timedwait (z_gthread_cond_t *cond, z_gthread_sem_t *sem,  const struct timespec *timeout)
++int _z_gthread_cond_timedwait (struct z_gthread_cond_t *cond, struct z_gthread_sem_t *sem,  const struct timespec *timeout)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_wait_recursive (z_gthread_cond_t *cond, z_gthread_mutex_t *mtx)
++int _z_gthread_cond_wait_recursive (struct z_gthread_cond_t *cond, struct z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_destroy (z_gthread_cond_t *cond)
++int _z_gthread_cond_destroy (struct z_gthread_cond_t *cond)
+ {
+     return 0;
+ }
+\ No newline at end of file
+-- 
+2.17.1
+
+
+From e95065f8f95b4303d48f943ef91663dc2a703f37 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 15:19:46 +0100
+Subject: [PATCH 19/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index b1549f3..42c2773 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -97,7 +97,7 @@ int _z_gthread_cond_destroy (struct z_gthread_cond_t *);
+ 
+ /* Newlib lock functions */
+ #define __LOCK_INIT(class, lock) \
+-    class _LOCK_T _designator = _z_gthread_sem_initializer
++    class _LOCK_T lock = _z_gthread_sem_initializer
+ 
+ #define __LOCK_INIT_RECURSIVE(class, lock) \
+     class _LOCK_RECURSIVE_T lock = _z_gthread_mutex_initializer
+-- 
+2.17.1
+
+
+From 5a8208aafc462973a81367bec9ea4b39ef03f03d Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 16:18:26 +0100
+Subject: [PATCH 20/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 71 +++++++++++----------
+ newlib/libc/sys/zephyr/lock.c             | 75 +++++++++++++++--------
+ 2 files changed, 90 insertions(+), 56 deletions(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 42c2773..c1e9fe6 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -38,25 +38,27 @@
+ 
+ __BEGIN_DECLS
+ 
+-struct z_gthread_cond_t {
++struct _z_gthread_cond_t {
+    unsigned int dummy[8];
+ };
+ 
+-struct z_gthread_sem_t {
++struct _z_gthread_sem_t {
+    unsigned int dummy[8];
+ };
+ 
+-struct z_gthread_mutex_t {
++struct _z_gthread_mutex_t {
+     unsigned int dummy[8];
+ };
+ 
+ typedef void * _z_gthread_t;
++typedef unsigned int  _z_gthread_once_t
++typedef void * _z_gthread_key_t;
+ struct timespec;
+ 
+ 
+ /* Newlib lock structs */
+-typedef struct z_gthread_sem_t    _LOCK_T;
+-typedef struct z_gthread_mutex_t  _LOCK_RECURSIVE_T;
++typedef struct _z_gthread_sem_t    _LOCK_T;
++typedef struct _z_gthread_mutex_t  _LOCK_RECURSIVE_T;
+ 
+ /* These functions are implemented in the source of Zephyr OS*/
+ int _z_gthread_create (_z_gthread_t *threadid, void *(*__func) (void *),  void *__args);
+@@ -66,30 +68,37 @@ int _z_gthread_equal (_z_gthread_t , _z_gthread_t );
+ _z_gthread_t _z_gthread_self (void);
+ int _z_gthread_yield (void);
+ 
+-//struct z_gthread_sem_t _z_gthread_sem_initializer (void);
+-void _z_gthread_sem_initialize (struct z_gthread_sem_t *);
+-int _z_gthread_sem_lock (struct z_gthread_sem_t *);
+-int _z_gthread_sem_trylock (struct z_gthread_sem_t *);
+-int _z_gthread_sem_timedlock (struct z_gthread_sem_t *, const struct timespec *);
+-int _z_gthread_sem_unlock (struct z_gthread_sem_t *);
+-int _z_gthread_sem_destroy (struct z_gthread_sem_t *);
+-
+-//struct z_gthread_mutex_t _z_gthread_mutex_initializer(void);
+-void _z_gthread_mutex_initialize(struct z_gthread_mutex_t *);
+-int _z_gthread_mutex_lock (struct z_gthread_mutex_t *);
+-int _z_gthread_mutex_trylock (struct z_gthread_mutex_t *);
+-int _z_gthread_mutex_timedlock (struct z_gthread_mutex_t *, const struct timespec *);
+-int _z_gthread_mutex_unlock (struct z_gthread_mutex_t *);
+-int _z_gthread_mutex_destroy (struct z_gthread_mutex_t *);
+-
+-//struct z_gthread_cond_t _z_gthread_cond_initializer (void);
+-void _z_gthread_cond_initialize (struct z_gthread_cond_t *);
+-int _z_gthread_cond_broadcast (struct z_gthread_cond_t *);
+-int _z_gthread_cond_signal (struct z_gthread_cond_t *);
+-int _z_gthread_cond_wait (struct z_gthread_cond_t *, struct z_gthread_sem_t *);
+-int _z_gthread_cond_timedwait (struct z_gthread_cond_t *, struct z_gthread_sem_t *, const struct timespec *);
+-int _z_gthread_cond_wait_recursive (struct z_gthread_cond_t *, struct z_gthread_mutex_t *);
+-int _z_gthread_cond_destroy (struct z_gthread_cond_t *);
++int _z_gthread_once (_z_gthread_once_t *, void (*__func) (void));
++int _z_gthread_key_create (_z_gthread_key_t *, void (*__dtor) (void *));
++int _z_gthread_key_delete (_z_gthread_key_t );
++void * _z_gthread_getspecific (_z_gthread_key_t );
++int _z_gthread_setspecific (_z_gthread_key_t , const void *);
++
++
++//struct _z_gthread_sem_t _z_gthread_sem_initializer (void);
++void _z_gthread_sem_initialize (struct _z_gthread_sem_t *);
++int _z_gthread_sem_lock (struct _z_gthread_sem_t *);
++int _z_gthread_sem_trylock (struct _z_gthread_sem_t *);
++int _z_gthread_sem_timedlock (struct _z_gthread_sem_t *, const struct timespec *);
++int _z_gthread_sem_unlock (struct _z_gthread_sem_t *);
++int _z_gthread_sem_destroy (struct _z_gthread_sem_t *);
++
++//struct _z_gthread_mutex_t _z_gthread_mutex_initializer(void);
++void _z_gthread_mutex_initialize(struct _z_gthread_mutex_t *);
++int _z_gthread_mutex_lock (struct _z_gthread_mutex_t *);
++int _z_gthread_mutex_trylock (struct _z_gthread_mutex_t *);
++int _z_gthread_mutex_timedlock (struct _z_gthread_mutex_t *, const struct timespec *);
++int _z_gthread_mutex_unlock (struct _z_gthread_mutex_t *);
++int _z_gthread_mutex_destroy (struct _z_gthread_mutex_t *);
++
++//struct __z_gthread_cond_t _z_gthread_cond_initializer (void);
++void _z_gthread_cond_initialize (struct _z_gthread_cond_t *);
++int _z_gthread_cond_broadcast (struct _z_gthread_cond_t *);
++int _z_gthread_cond_signal (struct _z_gthread_cond_t *);
++int _z_gthread_cond_wait (struct _z_gthread_cond_t *, struct _z_gthread_sem_t *);
++int _z_gthread_cond_timedwait (struct _z_gthread_cond_t *, struct _z_gthread_sem_t *, const struct timespec *);
++int _z_gthread_cond_wait_recursive (struct _z_gthread_cond_t *, struct _z_gthread_mutex_t *);
++int _z_gthread_cond_destroy (struct _z_gthread_cond_t *);
+ 
+ 
+ #define _z_gthread_sem_initializer { 0,0,0,0,0,0,0,0 }
+@@ -111,13 +120,13 @@ int _z_gthread_cond_destroy (struct z_gthread_cond_t *);
+ 
+ #define __lock_init(_lock) _z_gthread_sem_initialize(&_lock)
+ #define __lock_acquire(_lock) _z_gthread_sem_lock(&_lock)
+-#define __lock_try_acquire(lock) _struct z_gthread_sem_trylock(&_lock)
++#define __lock_try_acquire(lock) _struct _z_gthread_sem_trylock(&_lock)
+ #define __lock_release(_lock) _z_gthread_sem_unlock(&_lock)
+ #define __lock_close(_lock) _z_gthread_sem_destroy(&_lock)
+ 
+ #define __lock_init_recursive(_lock) _z_gthread_mutex_initialize(&_lock)
+ #define __lock_acquire_recursive(_lock) _z_gthread_mutex_lock(&_lock)
+-#define __lock_try_acquire_recursive(lock) _struct z_gthread_mutex_trylock(&_lock)
++#define __lock_try_acquire_recursive(lock) _struct _z_gthread_mutex_trylock(&_lock)
+ #define __lock_release_recursive(_lock) _z_gthread_mutex_unlock(&_lock)
+ #define __lock_close_recursive(_lock) _z_gthread_mutex_destroy(&_lock)
+ 
+diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+index 0d4fc3b..23525b6 100644
+--- a/newlib/libc/sys/zephyr/lock.c
++++ b/newlib/libc/sys/zephyr/lock.c
+@@ -64,121 +64,146 @@ int _z_gthread_yield (void)
+     return 0;
+ }
+ 
++int _z_gthread_once (_z_gthread_once_t *once, void (*__func) (void))
++{
++    return 0;  
++}
++
++int _z_gthread_key_create (_z_gthread_key_t *key, void (*__dtor) (void *))
++{
++    return 0;  
++}
++
++int _z_gthread_key_delete (_z_gthread_key_t key)
++{
++    return 0;  
++}
++
++void * _z_gthread_getspecific (_z_gthread_key_t key)
++{
++    return NULL;  
++}
++
++int _z_gthread_setspecific (_z_gthread_key_t key, const void * ptr)
++{
++    return 0;  
++}
++
+ /* Semaphore (non-recursive mutex) */
+ /*
+-struct z_gthread_sem_t _z_gthread_sem_initializer (void)
++struct _z_gthread_sem_t _z_gthread_sem_initializer (void)
+ {
+-    struct z_gthread_sem_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    struct _z_gthread_sem_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
+     return ret;
+ }
+ */
+-void _z_gthread_sem_initialize (struct z_gthread_sem_t *sem)
++void _z_gthread_sem_initialize (struct _z_gthread_sem_t *sem)
+ {
+     return;
+ }
+ 
+-int _z_gthread_sem_lock (struct z_gthread_sem_t *sem)
++int _z_gthread_sem_lock (struct _z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_sem_trylock (struct z_gthread_sem_t *sem)
++int _z_gthread_sem_trylock (struct _z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_sem_timedlock (struct z_gthread_sem_t *sem,   const struct timespec *timeout)
++int _z_gthread_sem_timedlock (struct _z_gthread_sem_t *sem,   const struct timespec *timeout)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_sem_unlock (struct z_gthread_sem_t *sem)
++int _z_gthread_sem_unlock (struct _z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_sem_destroy (struct z_gthread_sem_t *sem)
++int _z_gthread_sem_destroy (struct _z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+ /* Recursive mutex */
+ /*
+-struct z_gthread_mutex_t _z_gthread_mutex_initializer (void)
++struct _z_gthread_mutex_t _z_gthread_mutex_initializer (void)
+ {
+-    struct z_gthread_mutex_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    struct _z_gthread_mutex_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
+     return ret;
+ }
+ */
+-void _z_gthread_mutex_initialize (struct z_gthread_mutex_t *mtx)
++void _z_gthread_mutex_initialize (struct _z_gthread_mutex_t *mtx)
+ {
+     return;
+ }
+ 
+-int _z_gthread_mutex_lock (struct z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_lock (struct _z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_trylock (struct z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_trylock (struct _z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_timedlock (struct z_gthread_mutex_t *mtx,   const struct timespec *timeout)
++int _z_gthread_mutex_timedlock (struct _z_gthread_mutex_t *mtx,   const struct timespec *timeout)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_unlock (struct z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_unlock (struct _z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_mutex_destroy (struct z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_destroy (struct _z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+ /* Conditions */
+ /*
+-struct z_gthread_cond_t _z_gthread_cond_initializer (void)
++struct _z_gthread_cond_t _z_gthread_cond_initializer (void)
+ {
+-    struct z_gthread_cond_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
++    struct _z_gthread_cond_t ret = { .dummy = {0, 0, 0, 0, 0, 0, 0, 0}};
+     return ret;
+ }
+ */
+-void _z_gthread_cond_initialize (struct z_gthread_cond_t *cond)
++void _z_gthread_cond_initialize (struct _z_gthread_cond_t *cond)
+ {
+ 
+ }
+ 
+-int _z_gthread_cond_broadcast (struct z_gthread_cond_t *cond)
++int _z_gthread_cond_broadcast (struct _z_gthread_cond_t *cond)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_signal (struct z_gthread_cond_t *cond)
++int _z_gthread_cond_signal (struct _z_gthread_cond_t *cond)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_wait (struct z_gthread_cond_t *cond, struct z_gthread_sem_t *sem)
++int _z_gthread_cond_wait (struct _z_gthread_cond_t *cond, struct _z_gthread_sem_t *sem)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_timedwait (struct z_gthread_cond_t *cond, struct z_gthread_sem_t *sem,  const struct timespec *timeout)
++int _z_gthread_cond_timedwait (struct _z_gthread_cond_t *cond, struct _z_gthread_sem_t *sem,  const struct timespec *timeout)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_wait_recursive (struct z_gthread_cond_t *cond, struct z_gthread_mutex_t *mtx)
++int _z_gthread_cond_wait_recursive (struct _z_gthread_cond_t *cond, struct _z_gthread_mutex_t *mtx)
+ {
+     return 0;
+ }
+ 
+-int _z_gthread_cond_destroy (struct z_gthread_cond_t *cond)
++int _z_gthread_cond_destroy (struct _z_gthread_cond_t *cond)
+ {
+     return 0;
+ }
+\ No newline at end of file
+-- 
+2.17.1
+
+
+From 98d88a459b21a374f5e532cb441b2611fe53800a Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 16:21:08 +0100
+Subject: [PATCH 21/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index c1e9fe6..2c41ba1 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -103,6 +103,7 @@ int _z_gthread_cond_destroy (struct _z_gthread_cond_t *);
+ 
+ #define _z_gthread_sem_initializer { 0,0,0,0,0,0,0,0 }
+ #define _z_gthread_mutex_initializer { 0,0,0,0,0,0,0,0 }
++#define _z_gthread_cond_initializer { 0,0,0,0,0,0,0,0 }
+ 
+ /* Newlib lock functions */
+ #define __LOCK_INIT(class, lock) \
+-- 
+2.17.1
+
+
+From d715e91e040ec31c6d6f5f0dbbaf70a3babf5e4b Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 19 Jan 2020 17:18:22 +0100
+Subject: [PATCH 22/22] fix
+
+---
+ newlib/libc/sys/zephyr/include/sys/lock.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
+index 2c41ba1..285acf9 100644
+--- a/newlib/libc/sys/zephyr/include/sys/lock.h
++++ b/newlib/libc/sys/zephyr/include/sys/lock.h
+@@ -51,7 +51,7 @@ struct _z_gthread_mutex_t {
+ };
+ 
+ typedef void * _z_gthread_t;
+-typedef unsigned int  _z_gthread_once_t
++typedef unsigned int  _z_gthread_once_t;
+ typedef void * _z_gthread_key_t;
+ struct timespec;
+ 
 -- 
 2.17.1
 
