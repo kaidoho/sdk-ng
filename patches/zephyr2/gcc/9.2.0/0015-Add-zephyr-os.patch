@@ -1,0 +1,438 @@
+From f2ae05be653c376eb01a53bfba8384b8187da4ff Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 12 Jan 2020 11:30:40 +0100
+Subject: [PATCH] Add Zephyr OS
+
+---
+ config/gthr.m4                        |   1 +
+ gcc/configure                         |   2 +-
+ libatomic/config/zephyr/host-config.h |  41 +++++
+ libatomic/config/zephyr/lock.c        |  37 ++++
+ libatomic/configure.tgt               |   5 +
+ libgcc/config/gthr-zephyr.h           | 239 ++++++++++++++++++++++++++
+ libgcc/configure                      |   1 +
+ libstdc++-v3/configure                |   1 +
+ libstdc++-v3/configure.host           |   4 +
+ 9 files changed, 330 insertions(+), 1 deletion(-)
+ create mode 100644 libatomic/config/zephyr/host-config.h
+ create mode 100644 libatomic/config/zephyr/lock.c
+ create mode 100644 libgcc/config/gthr-zephyr.h
+
+diff --git a/config/gthr.m4 b/config/gthr.m4
+index 7b29f1f33..265639b70 100644
+--- a/config/gthr.m4
++++ b/config/gthr.m4
+@@ -21,6 +21,7 @@ case $1 in
+     tpf)	thread_header=config/s390/gthr-tpf.h ;;
+     vxworks)	thread_header=config/gthr-vxworks.h ;;
+     win32)	thread_header=config/i386/gthr-win32.h ;;
++    zephyr)	thread_header=config/gthr-zephyr.h ;;
+ esac
+ AC_SUBST(thread_header)
+ ])
+diff --git a/gcc/configure b/gcc/configure
+index 481071b42..8ef2f7b4a 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -11861,7 +11861,7 @@ case ${enable_threads} in
+     target_thread_file='single'
+     ;;
+   aix | dce | lynx | mipssde | posix | rtems | \
+-  single | tpf | vxworks | win32)
++  single | tpf | vxworks | win32 | zephyr)
+     target_thread_file=${enable_threads}
+     ;;
+   *)
+diff --git a/libatomic/config/zephyr/host-config.h b/libatomic/config/zephyr/host-config.h
+new file mode 100644
+index 000000000..05cfdb882
+--- /dev/null
++++ b/libatomic/config/zephyr/host-config.h
+@@ -0,0 +1,41 @@
++/* Copyright (C) 2016-2020 Free Software Foundation, Inc.
++   Contributed by Markus Bernd Moessner <kho237115@gmail.com>.
++
++   This file is part of the GNU Atomic Library (libatomic).
++
++   Libatomic is free software; you can redistribute it and/or modify it
++   under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   Libatomic is distributed in the hope that it will be useful, but WITHOUT ANY
++   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
++   FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++   more details.
++
++   Under Section 7 of GPL version 3, you are granted additional
++   permissions described in the GCC Runtime Library Exception, version
++   3.1, as published by the Free Software Foundation.
++
++   You should have received a copy of the GNU General Public License and
++   a copy of the GCC Runtime Library Exception along with this program;
++   see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Included after all more target-specific host-config.h.  */
++
++#include <machine/_libatomic.h>
++
++static inline UWORD
++protect_start (void *ptr)
++{
++  return _z_libatomic_protect_start (ptr);
++}
++
++static inline void
++protect_end (void *ptr, UWORD isr_level)
++{
++  _z_libatomic_protect_end (ptr, isr_level);
++}
++
++#include_next <host-config.h>
+diff --git a/libatomic/config/zephyr/lock.c b/libatomic/config/zephyr/lock.c
+new file mode 100644
+index 000000000..b9dc73ea9
+--- /dev/null
++++ b/libatomic/config/zephyr/lock.c
+@@ -0,0 +1,37 @@
++/* Copyright (C) 2016-2020 Free Software Foundation, Inc.
++   Contributed by Markus Bernd Moessner <kho237115@gmail.com>.
++
++   This file is part of the GNU Atomic Library (libatomic).
++
++   Libatomic is free software; you can redistribute it and/or modify it
++   under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   Libatomic is distributed in the hope that it will be useful, but WITHOUT ANY
++   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
++   FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++   more details.
++
++   Under Section 7 of GPL version 3, you are granted additional
++   permissions described in the GCC Runtime Library Exception, version
++   3.1, as published by the Free Software Foundation.
++
++   You should have received a copy of the GNU General Public License and
++   a copy of the GCC Runtime Library Exception along with this program;
++   see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#include "libatomic_i.h"
++
++void
++libat_lock_n (void *ptr, size_t n)
++{
++  _z_libatomic_lock_n (ptr, n);
++}
++
++void
++libat_unlock_n (void *ptr, size_t n)
++{
++  _z_libatomic_unlock_n (ptr, n);
++}
+diff --git a/libatomic/configure.tgt b/libatomic/configure.tgt
+index ecbb7d33c..e8a31edc4 100644
+--- a/libatomic/configure.tgt
++++ b/libatomic/configure.tgt
+@@ -158,6 +158,11 @@ case "${target}" in
+ 	XCFLAGS="${configure_tgt_pre_target_cpu_XCFLAGS}"
+ 	config_path="rtems"
+ 	;;
++	
++  *-*-zephyr*)
++	XCFLAGS="${configure_tgt_pre_target_cpu_XCFLAGS}"
++	config_path="zephyr"
++	;;
+ 
+   *-*-elf*)
+ 	# ??? No target OS.  We could be targeting bare-metal kernel-mode,
+diff --git a/libgcc/config/gthr-zephyr.h b/libgcc/config/gthr-zephyr.h
+new file mode 100644
+index 000000000..37a6e13bd
+--- /dev/null
++++ b/libgcc/config/gthr-zephyr.h
+@@ -0,0 +1,239 @@
++/* Zephyr threads compatibility routines for libgcc2 and libobjc.
++   by: M.B.Moessner (based on gthr-rtems.h) */
++/* Compile this one with gcc.  */
++/* Copyright (C) 1997-2019 Free Software Foundation, Inc.
++
++This file is part of GCC.
++
++GCC is free software; you can redistribute it and/or modify it under
++the terms of the GNU General Public License as published by the Free
++Software Foundation; either version 3, or (at your option) any later
++version.
++
++GCC is distributed in the hope that it will be useful, but WITHOUT ANY
++WARRANTY; without even the implied warranty of MERCHANTABILITY or
++FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++Under Section 7 of GPL version 3, you are granted additional
++permissions described in the GCC Runtime Library Exception, version
++3.1, as published by the Free Software Foundation.
++
++You should have received a copy of the GNU General Public License and
++a copy of the GCC Runtime Library Exception along with this program;
++see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++<http://www.gnu.org/licenses/>.  */
++
++#ifndef GCC_GTHR_ZEPHYR_H
++#define GCC_GTHR_ZEPHYR_H
++
++#include <sys/lock.h>
++#include <stdint.h>
++#include <sched.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#define __GTHREADS 1
++#define __GTHREADS_CXX0X 1
++#define __GTHREAD_HAS_COND 1
++
++
++typedef struct _z_gthread_sem_t  __gthread_mutex_t;
++typedef struct _z_gthread_mutex_t __gthread_recursive_mutex_t;
++typedef struct _z_gthread_cond_t __gthread_cond_t;
++typedef struct timespec __gthread_time_t;
++
++typedef _z_gthread_t __gthread_t;
++typedef _z_gthread_key_t __gthread_key_t;
++typedef _z_gthread_once_t __gthread_once_t;
++
++
++#define __GTHREAD_ONCE_INIT 0
++#define __GTHREAD_MUTEX_INIT _z_gthread_sem_initializer
++#define __GTHREAD_MUTEX_INIT_FUNCTION _z_gthread_sem_initialize
++#define __GTHREAD_RECURSIVE_MUTEX_INIT _z_gthread_mutex_initializer
++#define __GTHREAD_RECURSIVE_MUTEX_INIT_FUNCTION _z_gthread_mutex_initialize
++#define __GTHREAD_COND_INIT _z_gthread_cond_initializer
++#define __GTHREAD_COND_INIT_FUNCTION _z_gthread_cond_initialize
++#define __GTHREAD_TIME_INIT {0, 0}
++
++static inline int
++__gthread_active_p (void)
++{
++  return 1;
++}
++
++static inline int
++__gthread_create (__gthread_t *__threadid, void *(*__func) (void *),
++		  void *__args)
++{
++  return _z_gthread_create (__threadid, __func, __args);
++}
++
++static inline int
++__gthread_join (__gthread_t __threadid, void **__value_ptr)
++{
++  return _z_gthread_join (__threadid, __value_ptr);
++}
++
++static inline int
++__gthread_detach (__gthread_t __threadid)
++{
++  return _z_gthread_detach (__threadid);
++}
++
++static inline int
++__gthread_equal (__gthread_t __t1, __gthread_t __t2)
++{
++  return _z_gthread_equal (__t1, __t2);
++}
++
++static inline __gthread_t
++__gthread_self (void)
++{
++  return _z_gthread_self ();
++}
++
++static inline int
++__gthread_yield (void)
++{
++  return _z_gthread_yield ();
++}
++
++static inline int
++__gthread_once (__gthread_once_t *__once, void (*__func) (void))
++{
++   return _z_gthread_once (__once, __func);
++}
++
++static inline int
++__gthread_key_create (__gthread_key_t *__key, void (*__dtor) (void *))
++{
++  return _z_gthread_key_create (__key, __dtor);
++}
++
++static inline int
++__gthread_key_delete (__gthread_key_t __key)
++{
++  return _z_gthread_key_delete (__key);
++}
++
++static inline void *
++__gthread_getspecific (__gthread_key_t __key)
++{
++  return _z_gthread_getspecific (__key);
++}
++
++static inline int
++__gthread_setspecific (__gthread_key_t __key, const void *__ptr)
++{
++  return _z_gthread_setspecific (__key, __ptr);
++}
++
++static inline int
++__gthread_mutex_lock (__gthread_mutex_t *__mutex)
++{
++  return _z_gthread_sem_lock (__mutex);
++}
++
++static inline int
++__gthread_mutex_trylock (__gthread_mutex_t *__mutex)
++{
++  return _z_gthread_sem_trylock (__mutex);
++}
++
++static inline int
++__gthread_mutex_timedlock (__gthread_mutex_t *__mutex,
++			   const __gthread_time_t *__abs_timeout)
++{
++  return _z_gthread_sem_timedlock (__mutex, __abs_timeout);
++}
++
++static inline int
++__gthread_mutex_unlock (__gthread_mutex_t *__mutex)
++{
++  return _z_gthread_sem_unlock (__mutex);
++}
++
++static inline int
++__gthread_mutex_destroy (__gthread_mutex_t *__mutex)
++{
++  return _z_gthread_sem_destroy (__mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_lock (__gthread_recursive_mutex_t *__mutex)
++{
++  return _z_gthread_mutex_lock (__mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_trylock (__gthread_recursive_mutex_t *__mutex)
++{
++  return _z_gthread_mutex_trylock (__mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t *__mutex,
++				     const __gthread_time_t *__abs_timeout)
++{
++  return _z_gthread_mutex_timedlock (__mutex, __abs_timeout);
++}
++
++static inline int
++__gthread_recursive_mutex_unlock (__gthread_recursive_mutex_t *__mutex)
++{
++  return _z_gthread_mutex_unlock (__mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_destroy (__gthread_recursive_mutex_t *__mutex)
++{
++  return  _z_gthread_mutex_destroy (__mutex);
++}
++
++static inline int
++__gthread_cond_broadcast (__gthread_cond_t *__cond)
++{
++  return _z_gthread_cond_broadcast (__cond);
++}
++
++static inline int
++__gthread_cond_signal (__gthread_cond_t *__cond)
++{
++  return _z_gthread_cond_signal (__cond);
++}
++
++static inline int
++__gthread_cond_wait (__gthread_cond_t *__cond, __gthread_mutex_t *__mutex)
++{
++  return _z_gthread_cond_wait (__cond, __mutex);
++}
++
++static inline int
++__gthread_cond_timedwait (__gthread_cond_t *__cond, __gthread_mutex_t *__mutex,
++			  const __gthread_time_t *__abs_timeout)
++{
++  return _z_gthread_cond_timedwait (__cond, __mutex, __abs_timeout);
++}
++
++static inline int
++__gthread_cond_wait_recursive (__gthread_cond_t *__cond,
++			       __gthread_recursive_mutex_t *__mutex)
++{
++  return _z_gthread_cond_wait_recursive (__cond, __mutex);
++}
++
++static inline int
++__gthread_cond_destroy (__gthread_cond_t *__cond)
++{
++  return _z_gthread_cond_destroy (__cond);
++}
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* ! GCC_GTHR_ZEPHYR_H */
+diff --git a/libgcc/configure b/libgcc/configure
+index 36dbbc1f6..95948123f 100644
+--- a/libgcc/configure
++++ b/libgcc/configure
+@@ -5550,6 +5550,7 @@ case $target_thread_file in
+     tpf)	thread_header=config/s390/gthr-tpf.h ;;
+     vxworks)	thread_header=config/gthr-vxworks.h ;;
+     win32)	thread_header=config/i386/gthr-win32.h ;;
++    zephyr)	thread_header=config/gthr-zephyr.h ;;
+ esac
+ 
+ 
+diff --git a/libstdc++-v3/configure b/libstdc++-v3/configure
+index 5acf79cba..c62d4a212 100755
+--- a/libstdc++-v3/configure
++++ b/libstdc++-v3/configure
+@@ -15426,6 +15426,7 @@ case $target_thread_file in
+     tpf)	thread_header=config/s390/gthr-tpf.h ;;
+     vxworks)	thread_header=config/gthr-vxworks.h ;;
+     win32)	thread_header=config/i386/gthr-win32.h ;;
++    zephyr)	thread_header=config/gthr-zephyr.h ;;
+ esac
+ 
+ 
+diff --git a/libstdc++-v3/configure.host b/libstdc++-v3/configure.host
+index f2ff1295d..72b0db3d5 100644
+--- a/libstdc++-v3/configure.host
++++ b/libstdc++-v3/configure.host
+@@ -318,6 +318,10 @@ case "${host_os}" in
+   vxworks)
+     os_include_dir="os/vxworks"
+     ;;
++  zephyr*)
++    # Use libatomic if necessary and avoid libstdc++ specific atomicity support
++    atomicity_dir="cpu/generic/atomicity_builtins"
++    ;;
+   *)
+     os_include_dir="os/generic"
+     ;;
+-- 
+2.17.1
+

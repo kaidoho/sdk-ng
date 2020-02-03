@@ -7,12 +7,49 @@ if [ -z "$TARGETS" ]; then
 	echo "Please specify target"
 	exit 1
 fi
-if [ "$TARGETS" == "all" ]; then
-	TARGETS=$(ls -1 configs/ | sed 's/.config//')
+
+TOOLCHAIN_VARIANT="zephyr"
+BUILD_ALL_CONFIGS="0"
+BUILD_TOOLS="0"
+
+case "$TARGETS" in 
+  *zephyr2*)
+		TOOLCHAIN_VARIANT="zephyr2"
+    ;;
+esac
+
+case "$TARGETS" in 
+  all)
+		BUILD_ALL_CONFIGS="1"
+		BUILD_TOOLS="1"
+    ;;
+  all-*-linux)
+		BUILD_ALL_CONFIGS=1
+		BUILD_TOOLS="1"
+    ;;
+  all-*-windows)
+		BUILD_ALL_CONFIGS="1"
+		BUILD_TOOLS="0"
+    ;;		
+esac
+
+
+if [ "${BUILD_ALL_CONFIGS}" == "1" ]; then
+	TARGETS=$(ls -1 configs/${TOOLCHAIN_VARIANT} | sed 's/.config//')
+fi
+
+if [ "{$BUILD_TOOLS}" == "1" ]; then
 	TARGETS=${TARGETS}" tools"
 fi
 
-COMMIT="3f461da11f1f8e9dcfdffef24e1982b5ffd10305"
+if [ "$TOOLCHAIN_VARIANT" == "zephyr" ]; then
+	CT_NG_COMMIT="3f461da11f1f8e9dcfdffef24e1982b5ffd10305"
+	CT_NG_REPO="https://github.com/crosstool-ng/crosstool-ng.git"
+else
+	CT_NG_COMMIT="3f461da11f1f8e9dcfdffef24e1982b5ffd10305"
+	CT_NG_REPO="https://github.com/crosstool-ng/crosstool-ng.git"
+fi
+
 GITDIR=${PWD}
 JOBS=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())')
 
@@ -39,7 +76,8 @@ if [ "$machine" == "Mac" ]; then
 	cd /Volumes/$ImageName
 fi
 
-export SDK_NG_HOME=${PWD}
+export CT_NG_BIN_DIR=${PWD}/bin-ct-ng-${TOOLCHAIN_VARIANT}
+export CT_NG_SRC_DIR=${PWD}/src-ct-ng-${TOOLCHAIN_VARIANT}
 
 for t in ${TARGETS}; do
 	if [ "${t}" = "tools" ]; then
@@ -49,24 +87,24 @@ for t in ${TARGETS}; do
 	fi
 done
 
-if [ ! -d "crosstool-ng" ]; then
-	git clone https://github.com/crosstool-ng/crosstool-ng.git
+if [ ! -d ${CT_NG_SRC_DIR} ]; then
+	git clone ${CT_NG_REPO} ${CT_NG_SRC_DIR}
 	echo "Patching tree"
-	pushd crosstool-ng
-	git checkout ${COMMIT}
-	for p in ${GITDIR}/patches/*.patch; do patch -p1 < $p; done
+	pushd ${CT_NG_SRC_DIR}
+	git checkout ${CT_NG_COMMIT}
+	for p in ${GITDIR}/patches/${TOOLCHAIN_VARIANT}/*.patch; do patch -p1 < $p; done
 	popd
 fi
 
-if [ ! -e "${SDK_NG_HOME}/bin/ct-ng" ]; then
-	pushd crosstool-ng
+if [ ! -e "${CT_NG_BIN_DIR}/bin/ct-ng" ]; then
+	pushd ${CT_NG_SRC_DIR}
 	./bootstrap
-	CFLAGS="-DKBUILD_NO_NLS" ./configure --prefix=${SDK_NG_HOME}
+	CFLAGS="-DKBUILD_NO_NLS" ./configure --prefix=${CT_NG_BIN_DIR}
 	make && make install
 	popd
 fi
 
-CT_NG=${SDK_NG_HOME}/bin/ct-ng
+CT_NG=${CT_NG_BIN_DIR}/bin/ct-ng
 
 mkdir -p build
 cd build
@@ -77,7 +115,7 @@ for t in ${TARGETS}; do
 		# We handled tools above, so skip it here
 		continue
 	fi
-	if [ ! -f ${GITDIR}/configs/${t}.config ]; then
+	if [ ! -f ${GITDIR}/configs/${TOOLCHAIN_VARIANT}/${t}.config ]; then
 		echo "Target configuration does not exist"
 		exit 1
 	fi
@@ -89,7 +127,7 @@ for t in ${TARGETS}; do
 	if [ -n "${build_toolchain}" ]; then
 		case "${t}" in
 			xtensa_*)
-				cp -a ${SDK_NG_HOME}/overlays .
+				cp -a ${CT_NG_BIN_DIR}/overlays .
 				export CT_PREFIX=${OUTPUT_DIR}/xtensa/${t#xtensa_}
 				mkdir -p ${CT_PREFIX}
 				;;
@@ -99,7 +137,7 @@ for t in ${TARGETS}; do
 		esac
 
 		${CT_NG} clean
-		${CT_NG} defconfig DEFCONFIG=${GITDIR}/configs/${t}.config
+		${CT_NG} defconfig DEFCONFIG=${GITDIR}/configs/${TOOLCHAIN_VARIANT}/${t}.config
 		${CT_NG} savedefconfig DEFCONFIG=${t}.config
 		${CT_NG} build -j ${JOBS}
 		if [ $? != 0 ]; then
@@ -121,10 +159,10 @@ for t in ${TARGETS}; do
 				./import-core.sh sample_controller_linux.tgz
 				;;
 			xtensa_intel_apl_adsp)
-				patch -p1 -N < ${GITDIR}/patches/xtensa/hal/intel_apl_adsp/0001-Adding-APL-DSP-config-files.patch
+				patch -p1 -N < ${GITDIR}/patches/${TOOLCHAIN_VARIANT}/xtensa/hal/intel_apl_adsp/0001-Adding-APL-DSP-config-files.patch
 				;;
 			xtensa_intel_s1000)
-				patch -p1 -N < ${GITDIR}/patches/xtensa/hal/intel_s1000/0001-Add-Sue-Creek-config-files.patch
+				patch -p1 -N < ${GITDIR}/patches/${TOOLCHAIN_VARIANT}/xtensa/hal/intel_s1000/0001-Add-Sue-Creek-config-files.patch
 				;;
 		esac
 
