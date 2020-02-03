@@ -1,29 +1,31 @@
-From e5c9ecb231f1abf42e1cec89ee665fbfff03d3fd Mon Sep 17 00:00:00 2001
+From fefd54fe03244d96dea7e56c74a9c0f1bfd2d157 Mon Sep 17 00:00:00 2001
 From: kaidoho <kho237115@gmail.com>
 Date: Fri, 17 Jan 2020 20:06:49 +0100
 Subject: [PATCH] Add Zephyr OS
 
 ---
- config.sub                                |    2 +-
- config/gthr.m4                            |    1 +
- configure                                 |    3 +
- libgloss/arm/configure                    |    2 +-
- newlib/configure.host                     |    8 +
- newlib/libc/sys/configure                 |    5 +-
- newlib/libc/sys/configure.in              |    1 +
- newlib/libc/sys/zephyr/Makefile.am        |   16 +
- newlib/libc/sys/zephyr/Makefile.in        |  439 ++
- newlib/libc/sys/zephyr/aclocal.m4         | 1012 +++++
- newlib/libc/sys/zephyr/configure          | 4784 +++++++++++++++++++++
- newlib/libc/sys/zephyr/configure.in       |   14 +
- newlib/libc/sys/zephyr/include/sys/lock.h |  136 +
- newlib/libc/sys/zephyr/lock.c             |  209 +
- 14 files changed, 6629 insertions(+), 3 deletions(-)
+ config.sub                                    |    2 +-
+ config/gthr.m4                                |    1 +
+ configure                                     |    3 +
+ libgloss/arm/configure                        |    2 +-
+ newlib/configure.host                         |    8 +
+ newlib/libc/sys/configure                     |    5 +-
+ newlib/libc/sys/configure.in                  |    1 +
+ newlib/libc/sys/zephyr/Makefile.am            |   16 +
+ newlib/libc/sys/zephyr/Makefile.in            |  439 ++
+ newlib/libc/sys/zephyr/aclocal.m4             | 1012 ++++
+ newlib/libc/sys/zephyr/configure              | 4784 +++++++++++++++++
+ newlib/libc/sys/zephyr/configure.in           |   14 +
+ .../sys/zephyr/include/machine/_libatomic.h   |   46 +
+ newlib/libc/sys/zephyr/include/sys/lock.h     |  136 +
+ newlib/libc/sys/zephyr/lock.c                 |  209 +
+ 15 files changed, 6675 insertions(+), 3 deletions(-)
  create mode 100644 newlib/libc/sys/zephyr/Makefile.am
  create mode 100644 newlib/libc/sys/zephyr/Makefile.in
  create mode 100644 newlib/libc/sys/zephyr/aclocal.m4
  create mode 100755 newlib/libc/sys/zephyr/configure
  create mode 100644 newlib/libc/sys/zephyr/configure.in
+ create mode 100644 newlib/libc/sys/zephyr/include/machine/_libatomic.h
  create mode 100644 newlib/libc/sys/zephyr/include/sys/lock.h
  create mode 100644 newlib/libc/sys/zephyr/lock.c
 
@@ -6435,6 +6437,58 @@ index 0000000..0cff88a
 +
 +AC_CONFIG_FILES([Makefile])
 +AC_OUTPUT
+diff --git a/newlib/libc/sys/zephyr/include/machine/_libatomic.h b/newlib/libc/sys/zephyr/include/machine/_libatomic.h
+new file mode 100644
+index 0000000..3a231a0
+--- /dev/null
++++ b/newlib/libc/sys/zephyr/include/machine/_libatomic.h
+@@ -0,0 +1,46 @@
++/*-
++ * Copyright (c) 2020 Markus Bernd Moessner
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ */
++
++/*
++ * The libatomic is a part of GCC.  It provides library support for C11/C++11
++ * atomic operations.  This file defines the interface to the operating system
++ * Zephyr.
++ */
++
++#include <sys/cdefs.h>
++#include <machine/_default_types.h>
++
++__BEGIN_DECLS
++
++__uint32_t _z_libatomic_protect_start(void *);
++
++void _z_libatomic_protect_end(void *, __uint32_t);
++
++void _z_libatomic_lock_n(void *, __size_t);
++
++void _z_libatomic_unlock_n(void *, __size_t);
++
++__END_DECLS
 diff --git a/newlib/libc/sys/zephyr/include/sys/lock.h b/newlib/libc/sys/zephyr/include/sys/lock.h
 new file mode 100644
 index 0000000..285acf9
