@@ -1,4 +1,4 @@
-From fefd54fe03244d96dea7e56c74a9c0f1bfd2d157 Mon Sep 17 00:00:00 2001
+From 64d3c2f25b1a5d6660d1f2980dd0ea7045f2c2f1 Mon Sep 17 00:00:00 2001
 From: kaidoho <kho237115@gmail.com>
 Date: Fri, 17 Jan 2020 20:06:49 +0100
 Subject: [PATCH] Add Zephyr OS
@@ -18,8 +18,8 @@ Subject: [PATCH] Add Zephyr OS
  newlib/libc/sys/zephyr/configure.in           |   14 +
  .../sys/zephyr/include/machine/_libatomic.h   |   46 +
  newlib/libc/sys/zephyr/include/sys/lock.h     |  136 +
- newlib/libc/sys/zephyr/lock.c                 |  209 +
- 15 files changed, 6675 insertions(+), 3 deletions(-)
+ newlib/libc/sys/zephyr/stubs.c                |  214 +
+ 15 files changed, 6680 insertions(+), 3 deletions(-)
  create mode 100644 newlib/libc/sys/zephyr/Makefile.am
  create mode 100644 newlib/libc/sys/zephyr/Makefile.in
  create mode 100644 newlib/libc/sys/zephyr/aclocal.m4
@@ -27,7 +27,7 @@ Subject: [PATCH] Add Zephyr OS
  create mode 100644 newlib/libc/sys/zephyr/configure.in
  create mode 100644 newlib/libc/sys/zephyr/include/machine/_libatomic.h
  create mode 100644 newlib/libc/sys/zephyr/include/sys/lock.h
- create mode 100644 newlib/libc/sys/zephyr/lock.c
+ create mode 100644 newlib/libc/sys/zephyr/stubs.c
 
 diff --git a/config.sub b/config.sub
 index c95acc6..57615fa 100755
@@ -144,7 +144,7 @@ index bc6cb88..fa34fec 100644
  
 diff --git a/newlib/libc/sys/zephyr/Makefile.am b/newlib/libc/sys/zephyr/Makefile.am
 new file mode 100644
-index 0000000..fc6d1f3
+index 0000000..0493350
 --- /dev/null
 +++ b/newlib/libc/sys/zephyr/Makefile.am
 @@ -0,0 +1,16 @@
@@ -158,7 +158,7 @@ index 0000000..fc6d1f3
 +
 +noinst_LIBRARIES = lib.a
 +
-+lib_a_SOURCES = lock.c 
++lib_a_SOURCES = stubs.c 
 +lib_a_CCASFLAGS = $(AM_CCASFLAGS)
 +lib_a_CFLAGS = $(AM_CFLAGS)
 +
@@ -166,7 +166,7 @@ index 0000000..fc6d1f3
 +CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host
 diff --git a/newlib/libc/sys/zephyr/Makefile.in b/newlib/libc/sys/zephyr/Makefile.in
 new file mode 100644
-index 0000000..dbaf454
+index 0000000..da29d8c
 --- /dev/null
 +++ b/newlib/libc/sys/zephyr/Makefile.in
 @@ -0,0 +1,439 @@
@@ -241,7 +241,7 @@ index 0000000..dbaf454
 +ARFLAGS = cru
 +lib_a_AR = $(AR) $(ARFLAGS)
 +lib_a_LIBADD =
-+am_lib_a_OBJECTS = lib_a-lock.$(OBJEXT)
++am_lib_a_OBJECTS = lib_a-stubs.$(OBJEXT)
 +lib_a_OBJECTS = $(am_lib_a_OBJECTS)
 +DEFAULT_INCLUDES = -I.@am__isrc@
 +depcomp =
@@ -366,7 +366,7 @@ index 0000000..dbaf454
 +INCLUDES = $(NEWLIB_CFLAGS) $(CROSS_CFLAGS) $(TARGET_CFLAGS)
 +AM_CCASFLAGS = $(INCLUDES)
 +noinst_LIBRARIES = lib.a
-+lib_a_SOURCES = lock.c 
++lib_a_SOURCES = stubs.c 
 +lib_a_CCASFLAGS = $(AM_CCASFLAGS)
 +lib_a_CFLAGS = $(AM_CFLAGS)
 +ACLOCAL_AMFLAGS = -I ../../.. -I ../../../..
@@ -429,11 +429,11 @@ index 0000000..dbaf454
 +.c.obj:
 +	$(COMPILE) -c `$(CYGPATH_W) '$<'`
 +
-+lib_a-lock.o: lock.c
-+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-lock.o `test -f 'lock.c' || echo '$(srcdir)/'`lock.c
++lib_a-stubs.o: stubs.c
++	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-stubs.o `test -f 'stubs.c' || echo '$(srcdir)/'`stubs.c
 +
-+lib_a-lock.obj: lock.c
-+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-lock.obj `if test -f 'lock.c'; then $(CYGPATH_W) 'lock.c'; else $(CYGPATH_W) '$(srcdir)/lock.c'; fi`
++lib_a-stubs.obj: stubs.c
++	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(lib_a_CFLAGS) $(CFLAGS) -c -o lib_a-stubs.obj `if test -f 'stubs.c'; then $(CYGPATH_W) 'stubs.c'; else $(CYGPATH_W) '$(srcdir)/stubs.c'; fi`
 +
 +ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 +	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -1629,7 +1629,7 @@ index 0000000..62fe272
 +m4_include([../../../acinclude.m4])
 diff --git a/newlib/libc/sys/zephyr/configure b/newlib/libc/sys/zephyr/configure
 new file mode 100755
-index 0000000..cc50b4d
+index 0000000..5ef86ea
 --- /dev/null
 +++ b/newlib/libc/sys/zephyr/configure
 @@ -0,0 +1,4784 @@
@@ -2216,7 +2216,7 @@ index 0000000..cc50b4d
 +PACKAGE_BUGREPORT=''
 +PACKAGE_URL=''
 +
-+ac_unique_file="lock.c"
++ac_unique_file="stubs.c"
 +ac_subst_vars='LTLIBOBJS
 +LIBOBJS
 +sys_dir
@@ -6419,7 +6419,7 @@ index 0000000..cc50b4d
 +
 diff --git a/newlib/libc/sys/zephyr/configure.in b/newlib/libc/sys/zephyr/configure.in
 new file mode 100644
-index 0000000..0cff88a
+index 0000000..730fd08
 --- /dev/null
 +++ b/newlib/libc/sys/zephyr/configure.in
 @@ -0,0 +1,14 @@
@@ -6428,7 +6428,7 @@ index 0000000..0cff88a
 +
 +AC_PREREQ(2.59)
 +AC_INIT([newlib],[NEWLIB_VERSION])
-+AC_CONFIG_SRCDIR([lock.c])
++AC_CONFIG_SRCDIR([stubs.c])
 +
 +dnl Can't be done in NEWLIB_CONFIGURE because that confuses automake. 
 +AC_CONFIG_AUX_DIR(../../../..)
@@ -6631,12 +6631,12 @@ index 0000000..285acf9
 +__END_DECLS
 +
 +#endif /* !__SYS_LOCK_H__ */
-diff --git a/newlib/libc/sys/zephyr/lock.c b/newlib/libc/sys/zephyr/lock.c
+diff --git a/newlib/libc/sys/zephyr/stubs.c b/newlib/libc/sys/zephyr/stubs.c
 new file mode 100644
-index 0000000..23525b6
+index 0000000..9dabbbf
 --- /dev/null
-+++ b/newlib/libc/sys/zephyr/lock.c
-@@ -0,0 +1,209 @@
++++ b/newlib/libc/sys/zephyr/stubs.c
+@@ -0,0 +1,214 @@
 +/*
 + * Copyright (c) 2020, Markus Bernd Moessner
 + * All rights reserved.
@@ -6845,6 +6845,11 @@ index 0000000..23525b6
 +int _z_gthread_cond_destroy (struct _z_gthread_cond_t *cond)
 +{
 +    return 0;
++}
++
++void _exit(int status) 
++{ 
++    while(1){}
 +}
 \ No newline at end of file
 -- 
