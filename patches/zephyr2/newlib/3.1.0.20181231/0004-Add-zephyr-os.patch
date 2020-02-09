@@ -1,4 +1,4 @@
-From 64d3c2f25b1a5d6660d1f2980dd0ea7045f2c2f1 Mon Sep 17 00:00:00 2001
+From fc69dfb450451eb4acf47a6e4441df2fddf1dd2d Mon Sep 17 00:00:00 2001
 From: kaidoho <kho237115@gmail.com>
 Date: Fri, 17 Jan 2020 20:06:49 +0100
 Subject: [PATCH] Add Zephyr OS
@@ -6633,7 +6633,7 @@ index 0000000..285acf9
 +#endif /* !__SYS_LOCK_H__ */
 diff --git a/newlib/libc/sys/zephyr/stubs.c b/newlib/libc/sys/zephyr/stubs.c
 new file mode 100644
-index 0000000..9dabbbf
+index 0000000..66f27b2
 --- /dev/null
 +++ b/newlib/libc/sys/zephyr/stubs.c
 @@ -0,0 +1,214 @@
@@ -6674,56 +6674,56 @@ index 0000000..9dabbbf
 +/* Empty stubs for sys/lock APIs */
 +
 +/* Threads */
-+int _z_gthread_create (_z_gthread_t *threadid, void *(*__func) (void *),  void *__args)
++int _z_gthread_create (_z_gthread_t *threadid, void *(*__func) (void *),  void *__args) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_join (_z_gthread_t threadid, void **value_ptr)
++int _z_gthread_join (_z_gthread_t threadid, void **value_ptr) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_detach (_z_gthread_t threadid)
++int _z_gthread_detach (_z_gthread_t threadid) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_equal (_z_gthread_t t1, _z_gthread_t t2)
++int _z_gthread_equal (_z_gthread_t t1, _z_gthread_t t2) __attribute__((weak))
 +{
 +    return 0;
 +}
-+_z_gthread_t _z_gthread_self (void)
-+{
-+    return 0;
-+}
-+
-+int _z_gthread_yield (void)
++_z_gthread_t _z_gthread_self (void) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_once (_z_gthread_once_t *once, void (*__func) (void))
++int _z_gthread_yield (void) __attribute__((weak))
++{
++    return 0;
++}
++
++int _z_gthread_once (_z_gthread_once_t *once, void (*__func) (void)) __attribute__((weak))
 +{
 +    return 0;  
 +}
 +
-+int _z_gthread_key_create (_z_gthread_key_t *key, void (*__dtor) (void *))
++int _z_gthread_key_create (_z_gthread_key_t *key, void (*__dtor) (void *)) __attribute__((weak))
 +{
 +    return 0;  
 +}
 +
-+int _z_gthread_key_delete (_z_gthread_key_t key)
++int _z_gthread_key_delete (_z_gthread_key_t key) __attribute__((weak))
 +{
 +    return 0;  
 +}
 +
-+void * _z_gthread_getspecific (_z_gthread_key_t key)
++void * _z_gthread_getspecific (_z_gthread_key_t key) __attribute__((weak))
 +{
 +    return NULL;  
 +}
 +
-+int _z_gthread_setspecific (_z_gthread_key_t key, const void * ptr)
++int _z_gthread_setspecific (_z_gthread_key_t key, const void * ptr) __attribute__((weak))
 +{
 +    return 0;  
 +}
@@ -6736,32 +6736,32 @@ index 0000000..9dabbbf
 +    return ret;
 +}
 +*/
-+void _z_gthread_sem_initialize (struct _z_gthread_sem_t *sem)
++void _z_gthread_sem_initialize (struct _z_gthread_sem_t *sem) __attribute__((weak))
 +{
 +    return;
 +}
 +
-+int _z_gthread_sem_lock (struct _z_gthread_sem_t *sem)
++int _z_gthread_sem_lock (struct _z_gthread_sem_t *sem) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_sem_trylock (struct _z_gthread_sem_t *sem)
++int _z_gthread_sem_trylock (struct _z_gthread_sem_t *sem) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_sem_timedlock (struct _z_gthread_sem_t *sem,   const struct timespec *timeout)
++int _z_gthread_sem_timedlock (struct _z_gthread_sem_t *sem,   const struct timespec *timeout) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_sem_unlock (struct _z_gthread_sem_t *sem)
++int _z_gthread_sem_unlock (struct _z_gthread_sem_t *sem) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_sem_destroy (struct _z_gthread_sem_t *sem)
++int _z_gthread_sem_destroy (struct _z_gthread_sem_t *sem) __attribute__((weak))
 +{
 +    return 0;
 +}
@@ -6774,32 +6774,32 @@ index 0000000..9dabbbf
 +    return ret;
 +}
 +*/
-+void _z_gthread_mutex_initialize (struct _z_gthread_mutex_t *mtx)
++void _z_gthread_mutex_initialize (struct _z_gthread_mutex_t *mtx) __attribute__((weak))
 +{
 +    return;
 +}
 +
-+int _z_gthread_mutex_lock (struct _z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_lock (struct _z_gthread_mutex_t *mtx) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_mutex_trylock (struct _z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_trylock (struct _z_gthread_mutex_t *mtx) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_mutex_timedlock (struct _z_gthread_mutex_t *mtx,   const struct timespec *timeout)
++int _z_gthread_mutex_timedlock (struct _z_gthread_mutex_t *mtx,   const struct timespec *timeout) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_mutex_unlock (struct _z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_unlock (struct _z_gthread_mutex_t *mtx) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_mutex_destroy (struct _z_gthread_mutex_t *mtx)
++int _z_gthread_mutex_destroy (struct _z_gthread_mutex_t *mtx) __attribute__((weak))
 +{
 +    return 0;
 +}
@@ -6812,46 +6812,45 @@ index 0000000..9dabbbf
 +    return ret;
 +}
 +*/
-+void _z_gthread_cond_initialize (struct _z_gthread_cond_t *cond)
++void _z_gthread_cond_initialize (struct _z_gthread_cond_t *cond) __attribute__((weak))
 +{
 +
 +}
 +
-+int _z_gthread_cond_broadcast (struct _z_gthread_cond_t *cond)
-+{
-+    return 0;
-+}
-+
-+int _z_gthread_cond_signal (struct _z_gthread_cond_t *cond)
++int _z_gthread_cond_broadcast (struct _z_gthread_cond_t *cond) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_cond_wait (struct _z_gthread_cond_t *cond, struct _z_gthread_sem_t *sem)
++int _z_gthread_cond_signal (struct _z_gthread_cond_t *cond) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_cond_timedwait (struct _z_gthread_cond_t *cond, struct _z_gthread_sem_t *sem,  const struct timespec *timeout)
++int _z_gthread_cond_wait (struct _z_gthread_cond_t *cond, struct _z_gthread_sem_t *sem) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_cond_wait_recursive (struct _z_gthread_cond_t *cond, struct _z_gthread_mutex_t *mtx)
++int _z_gthread_cond_timedwait (struct _z_gthread_cond_t *cond, struct _z_gthread_sem_t *sem,  const struct timespec *timeout) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+int _z_gthread_cond_destroy (struct _z_gthread_cond_t *cond)
++int _z_gthread_cond_wait_recursive (struct _z_gthread_cond_t *cond, struct _z_gthread_mutex_t *mtx) __attribute__((weak))
 +{
 +    return 0;
 +}
 +
-+void _exit(int status) 
++int _z_gthread_cond_destroy (struct _z_gthread_cond_t *cond) __attribute__((weak))
++{
++    return 0;
++}
++
++void _exit(int status) __attribute__((weak)) 
 +{ 
 +    while(1){}
 +}
-\ No newline at end of file
 -- 
 2.17.1
 
