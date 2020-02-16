@@ -1,4 +1,4 @@
-From 439015fffe98c12f072e08f15b806326512f53be Mon Sep 17 00:00:00 2001
+From c35db3621af3bb2e82a2e854675335cc2bb3c35c Mon Sep 17 00:00:00 2001
 From: kaidoho <kho237115@gmail.com>
 Date: Sat, 11 Jan 2020 22:33:30 +0100
 Subject: [PATCH] Add Zephyr OS
@@ -337,7 +337,7 @@ index 36a4782e..288a10ae 100644
  endmenu
 +
 diff --git a/scripts/build/cc/gcc.sh b/scripts/build/cc/gcc.sh
-index 642fada0..f6503442 100644
+index 642fada0..a81c3286 100644
 --- a/scripts/build/cc/gcc.sh
 +++ b/scripts/build/cc/gcc.sh
 @@ -267,7 +267,8 @@ do_cc_core_pass_2() {
@@ -365,7 +365,7 @@ index 642fada0..f6503442 100644
      case "${mode}" in
 +        zephyr)
 +            extra_config+=("--with-newlib")
-+            extra_config+=("--enable-threads=zephyr")
++            extra_config+=("--enable-threads=posix")
 +            extra_config+=("--disable-shared")
 +            ;;
          static)
